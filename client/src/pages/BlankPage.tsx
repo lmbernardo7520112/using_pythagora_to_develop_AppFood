@@ -1,41 +1,40 @@
-
-import { Construction, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import { Home, ArrowLeft } from "lucide-react"
 
 export function BlankPage() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-            <Construction className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <CardTitle className="text-2xl">Page Under Construction</CardTitle>
-          <CardDescription>
-            This page is not yet implemented.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Please tell Pythagora to implement the {location.pathname} page
-            </p>
-            <Button 
-              onClick={() => navigate("/")} 
-              className="w-full"
-              variant="default"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back Home
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 flex items-center justify-center">
+      <div className="text-center space-y-6 p-8">
+        <div className="text-gray-400 mb-6">
+          <div className="text-9xl font-bold">404</div>
+        </div>
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+          Page Not Found
+        </h1>
+        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div className="flex items-center justify-center space-x-4">
+          <Button
+            onClick={() => navigate(-1)}
+            variant="outline"
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Go Back</span>
+          </Button>
+          <Button
+            onClick={() => navigate('/')}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 flex items-center space-x-2"
+          >
+            <Home className="h-4 w-4" />
+            <span>Go Home</span>
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
