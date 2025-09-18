@@ -4,14 +4,20 @@ const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const cors = require("cors");
+
+// Rotas existentes
 const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+
+// Nova rota de analytics
+const analyticsRoutes = require("./routes/analyticsRoutes");
+
 const { connectDB } = require("./config/database");
-const cors = require("cors");
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variable in .env missing.");
@@ -29,7 +35,7 @@ app.enable("strict routing");
 // ✅ Configuração CORS para frontend em Vite (localhost:5173)
 app.use(
   cors({
-    origin: "http://localhost:5173", // frontend
+    origin: "http://localhost:5173", // frontend Vite
     credentials: true, // permite cookies e headers de autenticação
   })
 );
@@ -48,8 +54,8 @@ app.use(
       collectionName: "sessions",
     }),
     cookie: {
-      secure: false, // Set to true in production with HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: false, // true em produção com HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 horas
     },
   })
 );
@@ -64,13 +70,16 @@ app.on("error", (error) => {
 
 // Basic Routes
 app.use(basicRoutes);
+
 // Authentication Routes
 app.use("/api/auth", authRoutes);
+
 // API Routes
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/analytics", analyticsRoutes); // ✅ nova rota
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {
@@ -87,3 +96,4 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+

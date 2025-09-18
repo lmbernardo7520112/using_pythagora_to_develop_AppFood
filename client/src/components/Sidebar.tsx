@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { Link, useLocation } from "react-router-dom"
-import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { 
   Home, 
   ShoppingCart, 
@@ -14,14 +14,14 @@ import {
   ClipboardList,
   TrendingUp,
   ShoppingBag
-} from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const customerNavItems = [
   { name: "Browse Food", href: "/", icon: Home },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "My Orders", href: "/orders", icon: ClipboardList },
-]
+];
 
 const adminNavItems = [
   { name: "Dashboard", href: "/admin", icon: BarChart3 },
@@ -30,17 +30,22 @@ const adminNavItems = [
   { name: "Inventory", href: "/admin/inventory", icon: Warehouse },
   { name: "Orders", href: "/admin/orders", icon: ClipboardList },
   { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
-]
+];
 
 export function Sidebar() {
-  const location = useLocation()
-  const { user } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  
-  const isAdmin = user?.role === 'admin' // Assuming user has role property
-  const navItems = isAdmin ? adminNavItems : customerNavItems
+  const location = useLocation();
+  const auth = useAuth(); // Obtém o objeto completo do AuthContext
+  const { currentUser: user } = auth; // Desestrutura currentUser como user
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  console.log('Sidebar rendered for user role:', user?.role)
+  useEffect(() => {
+    console.log("Sidebar user updated:", user);
+  }, [user]);
+
+  const isAdmin = user?.role === 'admin';
+  const navItems = isAdmin ? adminNavItems : customerNavItems;
+
+  console.log('Sidebar rendered for user role:', user?.role);
 
   return (
     <div className={cn(
@@ -66,7 +71,7 @@ export function Sidebar() {
         
         <nav className="flex-1 px-4 space-y-2">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href
+            const isActive = location.pathname === item.href;
             return (
               <Link
                 key={item.name}
@@ -82,10 +87,10 @@ export function Sidebar() {
                 <item.icon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
                 {!isCollapsed && <span>{item.name}</span>}
               </Link>
-            )
+            );
           })}
         </nav>
       </div>
     </div>
-  )
+  );
 }
