@@ -1,103 +1,112 @@
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/useToast"
-import { getCategories, Category } from "@/api/categories"
-import { getProducts, Product } from "@/api/products"
-import { addToCart } from "@/api/cart"
-import { Search, Clock, Utensils, Star } from "lucide-react"
-import { ProductCard } from "@/components/ProductCard"
-import { CategoryFilter } from "@/components/CategoryFilter"
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/useToast';
+import { getCategories, Category } from '@/api/categories';
+import { getProducts, Product } from '@/api/products';
+import { addToCart } from '@/api/cart';
+import { Search, Clock, Utensils, Star } from 'lucide-react';
+import { ProductCard } from '@/components/ProductCard';
+import { CategoryFilter } from '@/components/CategoryFilter';
 
 export function Home() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   useEffect(() => {
-    filterProducts()
-  }, [products, selectedCategory, searchQuery])
+    filterProducts();
+  }, [products, selectedCategory, searchQuery]);
 
   const fetchData = async () => {
     try {
-      setLoading(true)
-      console.log("Fetching home page data...")
+      setLoading(true);
+      console.log('Fetching home page data...');
 
       const [categoriesResponse, productsResponse] = await Promise.all([
         getCategories(),
-        getProducts()
-      ])
+        getProducts(),
+      ]);
 
-      setCategories(categoriesResponse.categories)
-      setProducts(productsResponse.products)
+      console.log('Categories received:', categoriesResponse.categories);
+      console.log('Products received:', productsResponse.products);
+
+      setCategories(Array.isArray(categoriesResponse.categories) ? categoriesResponse.categories : []);
+      setProducts(Array.isArray(productsResponse.products) ? productsResponse.products : []);
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error('Error fetching data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load data. Please try again.",
-        variant: "destructive",
-      })
+        title: 'Error',
+        description: 'Failed to load data. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const filterProducts = () => {
-    let filtered = products
+    let filtered = products;
 
-    // Filtra por categoria, mas só se não for "all"
-    if (selectedCategory && selectedCategory !== "all") {
-      filtered = filtered.filter(product => String(product.categoryId) === selectedCategory)
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter((product) => {
+        // Verifica se categoryId é um objeto ou uma string
+        const categoryId = typeof product.categoryId === 'object' && product.categoryId?._id 
+          ? product.categoryId._id 
+          : product.categoryId;
+        return categoryId === selectedCategory;
+      });
     }
 
     if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
-    setFilteredProducts(filtered)
-  }
+    console.log('Filtered products:', filtered);
+    setFilteredProducts(filtered);
+  };
 
   const handleAddToCart = async (productId: string, size: string, quantity: number) => {
     try {
-      console.log("Adding to cart:", { productId, size, quantity })
-      await addToCart({ productId, size, quantity })
+      console.log('Adding to cart:', { productId, size, quantity });
+      await addToCart({ productId, size, quantity });
       toast({
-        title: "Success",
-        description: "Item added to cart successfully!",
-      })
+        title: 'Success',
+        description: 'Item added to cart successfully!',
+      });
     } catch (error) {
-      console.error("Error adding to cart:", error)
+      console.error('Error adding to cart:', error);
       toast({
-        title: "Error",
-        description: "Failed to add item to cart. Please try again.",
-        variant: "destructive",
-      })
+        title: 'Error',
+        description: 'Failed to add item to cart. Please try again.',
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 text-white">
         <div className="relative z-10">
           <h1 className="text-4xl font-bold mb-4">Welcome to AppFood</h1>
@@ -122,7 +131,6 @@ export function Home() {
         <div className="absolute inset-0 bg-black/20"></div>
       </div>
 
-      {/* Search and Filter Section */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -140,8 +148,7 @@ export function Home() {
         />
       </div>
 
-      {/* Categories Grid */}
-      {selectedCategory === "all" && !searchQuery && (
+      {selectedCategory === 'all' && !searchQuery && (
         <div>
           <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
             Browse Categories
@@ -159,6 +166,10 @@ export function Home() {
                       src={category.coverImage}
                       alt={category.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      onError={(e) => {
+                        console.error(`Failed to load category image: ${category.coverImage}`);
+                        e.currentTarget.src = 'https://via.placeholder.com/400?text=Fallback';
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <div className="absolute bottom-4 left-4 text-white">
@@ -173,16 +184,14 @@ export function Home() {
         </div>
       )}
 
-      {/* Products Grid */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-            {selectedCategory !== "all"
-              ? `${categories.find(c => c._id === selectedCategory)?.name || "Category"} Items`
+            {selectedCategory !== 'all'
+              ? `${categories.find((c) => c._id === selectedCategory)?.name || 'Category'} Items`
               : searchQuery
               ? `Search Results for "${searchQuery}"`
-              : "All Items"
-            }
+              : 'All Items'}
           </h2>
           <Badge variant="secondary" className="text-sm">
             {filteredProducts.length} items
@@ -214,5 +223,5 @@ export function Home() {
         )}
       </div>
     </div>
-  )
+  );
 }

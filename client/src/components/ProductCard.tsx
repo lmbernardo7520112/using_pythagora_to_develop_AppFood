@@ -33,9 +33,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         <CardContent className="p-0">
           <div className="relative h-48 overflow-hidden rounded-t-lg">
             <img
-              src={product.coverImage}
+              src={product.images[0] || 'https://via.placeholder.com/400?text=No+Image'}
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/400?text=Fallback'
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="absolute top-2 right-2">
@@ -78,12 +81,6 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                     {product.sizes.map((size) => (
                       <SelectItem key={size.name} value={size.name}>
                         {size.name} - ${size.price.toFixed(2)}
-                        {size.stock <= 5 && size.stock > 0 && (
-                          <span className="text-orange-500 ml-2">(Low stock)</span>
-                        )}
-                        {size.stock === 0 && (
-                          <span className="text-red-500 ml-2">(Out of stock)</span>
-                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -115,17 +112,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                   <div className="text-lg font-bold text-blue-600">
                     ${totalPrice.toFixed(2)}
                   </div>
-                  {selectedSizeData && selectedSizeData.stock <= 5 && selectedSizeData.stock > 0 && (
-                    <div className="text-xs text-orange-500">
-                      Only {selectedSizeData.stock} left
-                    </div>
-                  )}
                 </div>
               </div>
               
               <Button
                 onClick={handleAddToCart}
-                disabled={!product.isActive || !selectedSizeData || selectedSizeData.stock === 0}
+                disabled={!product.isActive || !selectedSizeData}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
@@ -148,9 +140,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             <div className="space-y-4">
               <div className="aspect-square rounded-lg overflow-hidden">
                 <img
-                  src={product.coverImage}
+                  src={product.images[0] || 'https://via.placeholder.com/400?text=No+Image'}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/400?text=Fallback'
+                  }}
                 />
               </div>
               
@@ -162,6 +157,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                         src={image}
                         alt={`${product.name} ${index + 2}`}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://via.placeholder.com/400?text=Fallback'
+                        }}
                       />
                     </div>
                   ))}
@@ -179,7 +177,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                       <div className="text-right">
                         <div className="font-semibold">${size.price.toFixed(2)}</div>
                         <div className="text-xs text-gray-500">
-                          {size.stock > 0 ? `${size.stock} available` : 'Out of stock'}
+                          Available
                         </div>
                       </div>
                     </div>
@@ -234,7 +232,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                     handleAddToCart()
                     setShowDetails(false)
                   }}
-                  disabled={!product.isActive || !selectedSizeData || selectedSizeData.stock === 0}
+                  disabled={!product.isActive || !selectedSizeData}
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
