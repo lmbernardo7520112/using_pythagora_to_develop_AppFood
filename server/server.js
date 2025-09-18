@@ -3,7 +3,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
-const MongoStore = require('connect-mongo');
+const MongoStore = require("connect-mongo");
 const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -14,35 +14,45 @@ const { connectDB } = require("./config/database");
 const cors = require("cors");
 
 if (!process.env.DATABASE_URL) {
-  console.error("Error: DATABASE_URL variables in .env missing.");
+  console.error("Error: DATABASE_URL variable in .env missing.");
   process.exit(-1);
 }
 
 const app = express();
 const port = process.env.PORT || 3000;
-// Pretty-print JSON responses
-app.enable('json spaces');
-// We want to be consistent with URL paths, so we enable strict routing
-app.enable('strict routing');
 
-app.use(cors({}));
+// Pretty-print JSON responses
+app.enable("json spaces");
+// We want to be consistent with URL paths, so we enable strict routing
+app.enable("strict routing");
+
+// ✅ Configuração CORS para frontend em Vite (localhost:5173)
+app.use(
+  cors({
+    origin: "http://localhost:5173", // frontend
+    credentials: true, // permite cookies e headers de autenticação
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session configuration for cart management
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'appfood-secret-key',
-  resave: false,
-  saveUninitialized: true,
-  store: MongoStore.create({
-    mongoUrl: process.env.DATABASE_URL,
-    collectionName: 'sessions'
-  }),
-  cookie: {
-    secure: false, // Set to true in production with HTTPS
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "appfood-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.DATABASE_URL,
+      collectionName: "sessions",
+    }),
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
 
 // Database connection
 connectDB();
@@ -55,12 +65,12 @@ app.on("error", (error) => {
 // Basic Routes
 app.use(basicRoutes);
 // Authentication Routes
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
 // API Routes
-app.use('/api/categories', categoryRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

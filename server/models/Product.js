@@ -14,6 +14,12 @@ const productSizeSchema = new mongoose.Schema({
   isDefault: {
     type: Boolean,
     default: false
+  },
+  stock: { // Adicionado para suportar controle de estoque
+    type: Number,
+    required: [true, 'Size stock is required'],
+    min: [0, 'Stock cannot be negative'],
+    default: 10
   }
 }, { _id: true });
 
