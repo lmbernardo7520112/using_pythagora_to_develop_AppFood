@@ -10,8 +10,6 @@ interface CategoryFilterProps {
 }
 
 export function CategoryFilter({ categories, selectedCategory, onCategoryChange }: CategoryFilterProps) {
-  const selectedCategoryName = categories.find(c => c._id === selectedCategory)?.name
-
   return (
     <div className="flex items-center space-x-2">
       <Select value={selectedCategory} onValueChange={onCategoryChange}>
@@ -19,7 +17,7 @@ export function CategoryFilter({ categories, selectedCategory, onCategoryChange 
           <SelectValue placeholder="All Categories" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Categories</SelectItem>
+          <SelectItem value="all">All Categories</SelectItem>
           {categories.map((category) => (
             <SelectItem key={category._id} value={category._id}>
               {category.name}
@@ -27,12 +25,12 @@ export function CategoryFilter({ categories, selectedCategory, onCategoryChange 
           ))}
         </SelectContent>
       </Select>
-      
-      {selectedCategory && (
+
+      {selectedCategory && selectedCategory !== "all" && (
         <Button
           variant="outline"
           size="icon"
-          onClick={() => onCategoryChange("")}
+          onClick={() => onCategoryChange("all")}
           className="bg-white/80 backdrop-blur-sm border-gray-200/50"
         >
           <X className="h-4 w-4" />
