@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/useToast"
 import { getCategories, Category } from "@/api/categories"
 import { getProducts, Product } from "@/api/products"
 import { addToCart } from "@/api/cart"
-import { Search, Plus, Minus, ShoppingCart, Star, Clock, Utensils } from "lucide-react"
+import { Search, Clock, Utensils, Star } from "lucide-react"
 import { ProductCard } from "@/components/ProductCard"
 import { CategoryFilter } from "@/components/CategoryFilter"
 
@@ -17,7 +14,7 @@ export function Home() {
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -33,8 +30,8 @@ export function Home() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      console.log('Fetching home page data...')
-      
+      console.log("Fetching home page data...")
+
       const [categoriesResponse, productsResponse] = await Promise.all([
         getCategories(),
         getProducts()
@@ -43,7 +40,7 @@ export function Home() {
       setCategories(categoriesResponse.categories)
       setProducts(productsResponse.products)
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error("Error fetching data:", error)
       toast({
         title: "Error",
         description: "Failed to load data. Please try again.",
@@ -57,8 +54,9 @@ export function Home() {
   const filterProducts = () => {
     let filtered = products
 
-    if (selectedCategory) {
-      filtered = filtered.filter(product => product.categoryId === selectedCategory)
+    // Filtra por categoria, mas só se não for "all"
+    if (selectedCategory && selectedCategory !== "all") {
+      filtered = filtered.filter(product => String(product.categoryId) === selectedCategory)
     }
 
     if (searchQuery) {
@@ -73,14 +71,14 @@ export function Home() {
 
   const handleAddToCart = async (productId: string, size: string, quantity: number) => {
     try {
-      console.log('Adding to cart:', { productId, size, quantity })
+      console.log("Adding to cart:", { productId, size, quantity })
       await addToCart({ productId, size, quantity })
       toast({
         title: "Success",
         description: "Item added to cart successfully!",
       })
     } catch (error) {
-      console.error('Error adding to cart:', error)
+      console.error("Error adding to cart:", error)
       toast({
         title: "Error",
         description: "Failed to add item to cart. Please try again.",
@@ -143,7 +141,7 @@ export function Home() {
       </div>
 
       {/* Categories Grid */}
-      {!selectedCategory && !searchQuery && (
+      {selectedCategory === "all" && !searchQuery && (
         <div>
           <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
             Browse Categories
@@ -179,11 +177,11 @@ export function Home() {
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-            {selectedCategory
-              ? `${categories.find(c => c._id === selectedCategory)?.name || 'Category'} Items`
+            {selectedCategory !== "all"
+              ? `${categories.find(c => c._id === selectedCategory)?.name || "Category"} Items`
               : searchQuery
               ? `Search Results for "${searchQuery}"`
-              : 'All Items'
+              : "All Items"
             }
           </h2>
           <Badge variant="secondary" className="text-sm">
