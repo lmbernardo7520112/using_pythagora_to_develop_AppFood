@@ -1,23 +1,20 @@
 // Load environment variables
 require("dotenv").config();
-const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const cors = require("cors");
+const { connectDB } = require("./config/database");
 
-// Rotas existentes
+// Rotas
 const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-
-// Nova rota de analytics
 const analyticsRoutes = require("./routes/analyticsRoutes");
-
-const { connectDB } = require("./config/database");
+const inventoryRoutes = require("./routes/inventoryRoutes"); // ✅ nova rota
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variable in .env missing.");
@@ -29,14 +26,13 @@ const port = process.env.PORT || 3000;
 
 // Pretty-print JSON responses
 app.enable("json spaces");
-// We want to be consistent with URL paths, so we enable strict routing
 app.enable("strict routing");
 
 // ✅ Configuração CORS para frontend em Vite (localhost:5173)
 app.use(
   cors({
-    origin: "http://localhost:5173", // frontend Vite
-    credentials: true, // permite cookies e headers de autenticação
+    origin: "http://localhost:5173",
+    credentials: true,
   })
 );
 
@@ -55,7 +51,7 @@ app.use(
     }),
     cookie: {
       secure: false, // true em produção com HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 24 horas
+      maxAge: 24 * 60 * 60 * 1000,
     },
   })
 );
@@ -68,25 +64,22 @@ app.on("error", (error) => {
   console.error(error.stack);
 });
 
-// Basic Routes
+// Rotas principais
 app.use(basicRoutes);
-
-// Authentication Routes
 app.use("/api/auth", authRoutes);
-
-// API Routes
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/analytics", analyticsRoutes); // ✅ nova rota
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/inventory", inventoryRoutes); // ✅ plugado
 
-// If no routes handled the request, it's a 404
-app.use((req, res, next) => {
+// 404 handler
+app.use((req, res) => {
   res.status(404).send("Page not found.");
 });
 
-// Error handling
+// Error handler
 app.use((err, req, res, next) => {
   console.error(`Unhandled application error: ${err.message}`);
   console.error(err.stack);
@@ -96,4 +89,3 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-

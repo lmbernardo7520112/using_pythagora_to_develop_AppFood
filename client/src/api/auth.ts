@@ -6,7 +6,7 @@ import api from './api';
 // Response: { accessToken: string, refreshToken: string }
 export const login = async (email: string, password: string) => {
   try {
-    const response = await api.post('/api/auth/login', { email, password });
+    const response = await api.post('/auth/login', { email, password });
     return response.data;
   } catch (error) {
     console.error('Login error:', error);

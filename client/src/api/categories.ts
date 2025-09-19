@@ -18,7 +18,7 @@ export interface Category {
 export const getCategories = async (): Promise<{ categories: Category[] }> => {
   console.log('Fetching categories...');
   try {
-    const response = await api.get<{ categories: Category[] }>('/api/categories');
+    const response = await api.get<{ categories: Category[] }>('/categories');
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
