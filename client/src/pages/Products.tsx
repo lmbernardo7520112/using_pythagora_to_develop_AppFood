@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription, // ✅ Import corrigido
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,8 @@ export function Products() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [open, setOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, control, setValue } = useForm<Product>({
     defaultValues: {
@@ -61,46 +63,77 @@ export function Products() {
     name: "sizes",
   });
 
-  // ✅ Corrigido Textarea (images): mostra array ao editar
   const [imagesText, setImagesText] = useState("");
 
   useEffect(() => {
-    fetch("/api/products").then((res) => res.json()).then(setProducts);
-    fetch("/api/categories").then((res) => res.json()).then(setCategories);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch("http://localhost:3000/api/products"),
+          fetch("http://localhost:3000/api/categories"),
+        ]);
+        if (!productsRes.ok || !categoriesRes.ok) throw new Error("Falha na requisição");
+        const productsData = await productsRes.json();
+        const categoriesData = await categoriesRes.json();
+        console.log("Raw products data:", productsData); // Depuração
+        setProducts(Array.isArray(productsData.products) ? productsData.products : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : Array.isArray(categoriesData.data) ? categoriesData.data : []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao carregar dados");
+        setProducts([]);
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const onSubmit = async (data: Product) => {
     const method = editingProduct ? "PUT" : "POST";
-    const url = editingProduct ? `/api/products/${editingProduct._id}` : "/api/products";
+    const url = editingProduct ? `http://localhost:3000/api/products/${editingProduct._id}` : "http://localhost:3000/api/products";
 
-    // ✅ Garante que images seja array vindo do textarea
     data.images = imagesText.split("\n").filter((url) => url.trim());
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    fetch("/api/products").then((res) => res.json()).then(setProducts);
-    reset();
-    setImagesText("");
-    setEditingProduct(null);
-    setOpen(false);
+    try {
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const updatedProducts = await fetch("http://localhost:3000/api/products").then((res) => res.json());
+      console.log("Updated products data:", updatedProducts); // Depuração
+      setProducts(Array.isArray(updatedProducts.products) ? updatedProducts.products : []);
+      reset();
+      setImagesText("");
+      setEditingProduct(null);
+      setOpen(false);
+    } catch (err) {
+      setError("Erro ao salvar produto");
+    }
   };
 
   const handleEdit = (product: Product) => {
     reset(product);
-    // ✅ Corrigido: converte array para string no textarea
     setImagesText(product.images.join("\n"));
     setEditingProduct(product);
     setOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/products/${id}`, { method: "DELETE" });
-    fetch("/api/products").then((res) => res.json()).then(setProducts);
+    try {
+      await fetch(`http://localhost:3000/api/products/${id}`, { method: "DELETE" });
+      const updatedProducts = await fetch("http://localhost:3000/api/products").then((res) => res.json());
+      setProducts(Array.isArray(updatedProducts.products) ? updatedProducts.products : []);
+    } catch (err) {
+      setError("Erro ao deletar produto");
+    }
   };
+
+  if (loading) return <div className="p-6">Carregando...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6">
@@ -185,21 +218,25 @@ export function Products() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((product) => (
-          <div key={product._id} className="border rounded-lg p-4">
-            <img src={product.images[0]} alt={product.name} className="w-full h-40 object-cover rounded" />
-            <h2 className="text-lg font-bold mt-2">{product.name}</h2>
-            <p className="text-sm text-gray-600">{product.description}</p>
-            <p className="text-md font-semibold">${product.price.toFixed(2)}</p>
-            <p className="text-sm">
-              Category: {typeof product.categoryId === "string" ? product.categoryId : product.categoryId.name}
-            </p>
-            <div className="flex space-x-2 mt-2">
-              <Button onClick={() => handleEdit(product)}>Edit</Button>
-              <Button variant="destructive" onClick={() => handleDelete(product._id!)}>Delete</Button>
+        {Array.isArray(products) && products.length > 0 ? (
+          products.map((product) => (
+            <div key={product._id} className="border rounded-lg p-4">
+              <img src={product.images[0]} alt={product.name} className="w-full h-40 object-cover rounded" />
+              <h2 className="text-lg font-bold mt-2">{product.name}</h2>
+              <p className="text-sm text-gray-600">{product.description}</p>
+              <p className="text-md font-semibold">${product.price.toFixed(2)}</p>
+              <p className="text-sm">
+                Category: {typeof product.categoryId === "string" ? product.categoryId : product.categoryId.name}
+              </p>
+              <div className="flex space-x-2 mt-2">
+                <Button onClick={() => handleEdit(product)}>Edit</Button>
+                <Button variant="destructive" onClick={() => handleDelete(product._id!)}>Delete</Button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p>Nenhum produto encontrado.</p>
+        )}
       </div>
     </div>
   );
