@@ -205,6 +205,8 @@ export function Categories() {
                   src={category.coverImage}
                   alt={category.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute top-2 right-2">

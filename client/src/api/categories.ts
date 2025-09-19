@@ -33,7 +33,7 @@ export const getCategories = async (): Promise<{ categories: Category[] }> => {
 export const createCategory = async (data: { name: string; description: string; coverImage: string }) => {
   console.log('Creating category:', data);
   try {
-    const response = await api.post<{ success: boolean; category: Category }>('/api/categories', data);
+    const response = await api.post<{ success: boolean; category: Category }>('/categories', data);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
@@ -48,7 +48,7 @@ export const createCategory = async (data: { name: string; description: string; 
 export const updateCategory = async (id: string, data: { name: string; description: string; coverImage: string }) => {
   console.log('Updating category:', id, data);
   try {
-    const response = await api.put<{ success: boolean; category: Category }>(`/api/categories/${id}`, data);
+    const response = await api.put<{ success: boolean; category: Category }>(`/categories/${id}`, data);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
@@ -63,7 +63,7 @@ export const updateCategory = async (id: string, data: { name: string; descripti
 export const deleteCategory = async (id: string) => {
   console.log('Deleting category:', id);
   try {
-    const response = await api.delete<{ success: boolean; message: string }>(`/api/categories/${id}`);
+    const response = await api.delete<{ success: boolean; message: string }>(`/categories/${id}`);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
