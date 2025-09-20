@@ -1,5 +1,6 @@
-import api from './api';
-import { AxiosError } from 'axios';
+// src/api/categories.ts
+import api from "./api";
+import { AxiosError } from "axios";
 
 export interface Category {
   _id: string;
@@ -11,62 +12,102 @@ export interface Category {
   updatedAt: string;
 }
 
-// Description: Get all categories
+// ================================
+// GET: Buscar todas as categorias
 // Endpoint: GET /api/categories
-// Request: {}
 // Response: { categories: Category[] }
+// ================================
 export const getCategories = async (): Promise<{ categories: Category[] }> => {
-  console.log('Fetching categories...');
+  console.log("Fetching categories...");
   try {
-    const response = await api.get<{ categories: Category[] }>('/categories');
+    const response = await api.get<{ categories: Category[] }>("/categories");
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    throw new Error(axiosError.response?.data?.message || axiosError.message || 'Failed to fetch categories');
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Failed to fetch categories"
+    );
   }
 };
 
-// Description: Create a new category
+// ================================
+// POST: Criar nova categoria
 // Endpoint: POST /api/categories
-// Request: { name: string, description: string, coverImage: string }
+// Request: { name, description, coverImage }
 // Response: { success: boolean, category: Category }
-export const createCategory = async (data: { name: string; description: string; coverImage: string }) => {
-  console.log('Creating category:', data);
+// ================================
+export const createCategory = async (data: {
+  name: string;
+  description: string;
+  coverImage: string;
+}) => {
+  console.log("Creating category:", data);
   try {
-    const response = await api.post<{ success: boolean; category: Category }>('/categories', data);
+    const response = await api.post<{
+      success: boolean;
+      category: Category;
+    }>("/categories", data);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    throw new Error(axiosError.response?.data?.message || axiosError.message || 'Failed to create category');
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Failed to create category"
+    );
   }
 };
 
-// Description: Update a category
+// ================================
+// PUT: Atualizar categoria
 // Endpoint: PUT /api/categories/:id
-// Request: { name: string, description: string, coverImage: string }
+// Request: { name, description, coverImage }
 // Response: { success: boolean, category: Category }
-export const updateCategory = async (id: string, data: { name: string; description: string; coverImage: string }) => {
-  console.log('Updating category:', id, data);
+// ================================
+export const updateCategory = async (
+  id: string,
+  data: { name: string; description: string; coverImage: string }
+) => {
+  console.log("Updating category:", id, data);
   try {
-    const response = await api.put<{ success: boolean; category: Category }>(`/categories/${id}`, data);
+    const response = await api.put<{
+      success: boolean;
+      category: Category;
+    }>(`/categories/${id}`, data);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    throw new Error(axiosError.response?.data?.message || axiosError.message || 'Failed to update category');
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Failed to update category"
+    );
   }
 };
 
-// Description: Delete a category
+// ================================
+// DELETE: Remover categoria
 // Endpoint: DELETE /api/categories/:id
-// Request: {}
-// Response: { success: boolean, message: string }
-export const deleteCategory = async (id: string) => {
-  console.log('Deleting category:', id);
+// Response: { success: boolean, message?: string }
+// ================================
+export const deleteCategory = async (
+  id: string
+): Promise<{ success: boolean; message?: string }> => {
+  console.log("Deleting category:", id);
   try {
-    const response = await api.delete<{ success: boolean; message: string }>(`/categories/${id}`);
+    const response = await api.delete<{
+      success: boolean;
+      message?: string;
+    }>(`/categories/${id}`);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    throw new Error(axiosError.response?.data?.message || axiosError.message || 'Failed to delete category');
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Failed to delete category"
+    );
   }
 };

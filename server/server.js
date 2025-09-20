@@ -1,4 +1,4 @@
-// Load environment variables
+/// server.js
 require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
@@ -14,7 +14,7 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
-const inventoryRoutes = require("./routes/inventoryRoutes"); // ✅ nova rota
+const inventoryRoutes = require("./routes/inventoryRoutes");
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variable in .env missing.");
@@ -28,7 +28,7 @@ const port = process.env.PORT || 3000;
 app.enable("json spaces");
 app.enable("strict routing");
 
-// ✅ Configuração CORS para frontend em Vite (localhost:5173)
+// ✅ Configuração CORS (com logs extras)
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -72,10 +72,11 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/inventory", inventoryRoutes); // ✅ plugado
+app.use("/api/inventory", inventoryRoutes);
 
 // 404 handler
 app.use((req, res) => {
+  console.warn(`[404] ${req.method} ${req.originalUrl}`);
   res.status(404).send("Page not found.");
 });
 

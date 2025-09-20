@@ -1,3 +1,6 @@
+// src/api/products.ts
+import api from "./api";
+
 export interface Product {
   _id: string;
   name: string;
@@ -20,7 +23,7 @@ export interface Product {
   updatedAt: string;
 }
 
-interface GetProductsResponse {
+export interface GetProductsResponse {
   success: boolean;
   products: Product[];
   pagination?: {
@@ -31,120 +34,91 @@ interface GetProductsResponse {
   };
 }
 
-interface ProductResponse {
+export interface ProductResponse {
   success: boolean;
   product: Product;
 }
 
-export const getProducts = async (categoryId?: string): Promise<GetProductsResponse> => {
+export const getProducts = async (
+  categoryId?: string
+): Promise<GetProductsResponse> => {
   try {
-    const url = categoryId ? `http://localhost:3000/api/products?categoryId=${categoryId}` : 'http://localhost:3000/api/products';
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
+    const params = categoryId ? { categoryId } : {};
+    const response = await api.get<GetProductsResponse>("/products", {
+      params,
+      withCredentials: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data: GetProductsResponse = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    throw error;
+    return response.data;
+  } catch (err: any) {
+    console.error("getProducts error:", err);
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Erro ao buscar produtos"
+    );
   }
 };
 
-export const createProduct = async (data: Partial<Product>): Promise<ProductResponse> => {
+export const createProduct = async (
+  data: Partial<Product>
+): Promise<ProductResponse> => {
   try {
-    const response = await fetch('http://localhost:3000/api/products', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(data),
+    const response = await api.post<ProductResponse>("/products", data, {
+      withCredentials: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const result: ProductResponse = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error creating product:', error);
-    throw error;
+    return response.data;
+  } catch (err: any) {
+    console.error("createProduct error:", err);
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Erro ao criar produto"
+    );
   }
 };
 
-export const updateProduct = async (productId: string, data: Partial<Product>): Promise<ProductResponse> => {
+export const updateProduct = async (
+  productId: string,
+  data: Partial<Product>
+): Promise<ProductResponse> => {
   try {
-    const response = await fetch(`http://localhost:3000/api/products/${productId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(data),
+    const response = await api.put<ProductResponse>(`/products/${productId}`, data, {
+      withCredentials: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const result: ProductResponse = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error updating product:', error);
-    throw error;
+    return response.data;
+  } catch (err: any) {
+    console.error("updateProduct error:", err);
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Erro ao atualizar produto"
+    );
   }
 };
 
-export const deleteProduct = async (productId: string): Promise<{ success: boolean }> => {
+export const deleteProduct = async (
+  productId: string
+): Promise<{ success: boolean }> => {
   try {
-    const response = await fetch(`http://localhost:3000/api/products/${productId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
+    const response = await api.delete<{ success: boolean }>(`/products/${productId}`, {
+      withCredentials: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const result: { success: boolean } = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error deleting product:', error);
-    throw error;
+    return response.data;
+  } catch (err: any) {
+    console.error("deleteProduct error:", err);
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Erro ao deletar produto"
+    );
   }
 };
 
-export const toggleProductStatus = async (productId: string): Promise<ProductResponse> => {
+export const toggleProductStatus = async (
+  productId: string
+): Promise<ProductResponse> => {
   try {
-    const response = await fetch(`http://localhost:3000/api/products/${productId}/toggle`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
+    const response = await api.patch<ProductResponse>(`/products/${productId}/toggle`, null, {
+      withCredentials: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const result: ProductResponse = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error toggling product status:', error);
-    throw error;
+    return response.data;
+  } catch (err: any) {
+    console.error("toggleProductStatus error:", err);
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Erro ao alternar status"
+    );
   }
 };
+
