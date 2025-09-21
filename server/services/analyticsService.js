@@ -1,181 +1,127 @@
-const Order = require('../models/Order');
-const Product = require('../models/Product');
+// services/analyticsService.js
+const Order = require("../models/Order");
 
-function parsePeriodToDate(period) {
-  if (!period) return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const m = period.match(/^(\d+)d$/);
-  if (m) {
-    const days = parseInt(m[1], 10);
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return d;
-  }
-  return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function calculateGrowth(current, previous) {
+  if (!previous || previous === 0) return 0;
+  return ((current - previous) / previous) * 100;
 }
 
-async function getDashboard(period = '30d') {
-  try {
-    const startDate = parsePeriodToDate(period);
+async function getDashboard(period = "30d") {
+  const now = new Date();
+  let days;
 
-    // 1) Totais de receita e pedidos no período
-    const revenueAndOrders = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate } } },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$totalAmount' },
-          totalOrders: { $sum: 1 },
-        },
-      },
-    ]);
-    const revenueTotals = revenueAndOrders[0] || { totalRevenue: 0, totalOrders: 0 };
-
-    // 2) Este mês x mês passado (para crescimento %)
-    const now = new Date();
-    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    const thisMonthAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfThisMonth, $lt: startOfNextMonth } } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' }, orders: { $sum: 1 } } },
-    ]);
-    const lastMonthAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth } } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' }, orders: { $sum: 1 } } },
-    ]);
-
-    const thisMonthRevenue = thisMonthAgg[0]?.revenue || 0;
-    const lastMonthRevenue = lastMonthAgg[0]?.revenue || 0;
-    const revenueGrowth =
-      lastMonthRevenue === 0
-        ? thisMonthRevenue > 0 ? 100 : 0
-        : ((thisMonthRevenue - lastMonthRevenue) / Math.abs(lastMonthRevenue)) * 100;
-
-    const thisMonthOrders = thisMonthAgg[0]?.orders || 0;
-    const lastMonthOrders = lastMonthAgg[0]?.orders || 0;
-    const ordersGrowth =
-      lastMonthOrders === 0
-        ? thisMonthOrders > 0 ? 100 : 0
-        : ((thisMonthOrders - lastMonthOrders) / Math.abs(lastMonthOrders)) * 100;
-
-    // 3) Clientes únicos (email)
-    const uniqueCustomersAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, 'customerInfo.email': { $exists: true, $ne: null } } },
-      { $group: { _id: '$customerInfo.email' } },
-      { $group: { _id: null, count: { $sum: 1 } } },
-    ]);
-    const customersTotal = uniqueCustomersAgg[0]?.count || 0;
-
-    const customersThisMonthAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfThisMonth, $lt: startOfNextMonth }, 'customerInfo.email': { $exists: true, $ne: null } } },
-      { $group: { _id: '$customerInfo.email' } },
-      { $group: { _id: null, count: { $sum: 1 } } },
-    ]);
-    const customersLastMonthAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth }, 'customerInfo.email': { $exists: true, $ne: null } } },
-      { $group: { _id: '$customerInfo.email' } },
-      { $group: { _id: null, count: { $sum: 1 } } },
-    ]);
-    const customersThisMonth = customersThisMonthAgg[0]?.count || 0;
-    const customersLastMonth = customersLastMonthAgg[0]?.count || 0;
-    const customersGrowth =
-      customersLastMonth === 0
-        ? customersThisMonth > 0 ? 100 : 0
-        : ((customersThisMonth - customersLastMonth) / Math.abs(customersLastMonth)) * 100;
-
-    // 4) Produtos populares
-    const popularProductsAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, items: { $exists: true } } },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.productId',
-          orderCount: { $sum: '$items.quantity' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
-        },
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'product',
-        },
-      },
-      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          productId: { $toString: '$_id' },
-          productName: { $ifNull: ['$product.name', 'Unknown product'] },
-          orderCount: 1,
-          revenue: 1,
-        },
-      },
-      { $sort: { orderCount: -1, revenue: -1 } },
-      { $limit: 10 },
-    ]);
-
-    // 5) Receita diária (gráfico)
-    const revenueChartAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          revenue: { $sum: '$totalAmount' },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    // 6) Distribuição de status de pedidos
-    const statusAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate } } },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
-    const totalOrdersInPeriod = revenueTotals.totalOrders || 0;
-    const orderStatusDistribution = statusAgg.map((s) => ({
-      status: s._id || 'unknown',
-      count: s.count,
-      percentage: totalOrdersInPeriod > 0 ? Number(((s.count / totalOrdersInPeriod) * 100).toFixed(1)) : 0,
-    }));
-
-    const analytics = {
-      revenue: {
-        total: Number((revenueTotals.totalRevenue || 0).toFixed(2)),
-        thisMonth: Number(thisMonthRevenue.toFixed(2)),
-        lastMonth: Number(lastMonthRevenue.toFixed(2)),
-        growth: Number(revenueGrowth.toFixed(1)),
-      },
-      orders: {
-        total: Number((revenueTotals.totalOrders || 0)),
-        thisMonth: thisMonthOrders,
-        lastMonth: lastMonthOrders,
-        growth: Number(ordersGrowth.toFixed(1)),
-      },
-      customers: {
-        total: customersTotal,
-        thisMonth: customersThisMonth,
-        lastMonth: customersLastMonth,
-        growth: Number(customersGrowth.toFixed(1)),
-      },
-      popularProducts: popularProductsAgg.map((p) => ({
-        productId: p.productId,
-        productName: p.productName,
-        orderCount: p.orderCount,
-        revenue: Number((p.revenue || 0).toFixed(2)),
-      })),
-      revenueChart: revenueChartAgg.map((r) => ({ date: r._id, revenue: Number((r.revenue || 0).toFixed(2)) })),
-      orderStatusDistribution,
-    };
-
-    return { analytics };
-  } catch (err) {
-    console.error('Analytics service error:', err);
-    throw new Error('Failed to compute analytics');
+  switch (period) {
+    case "7d":
+      days = 7;
+      break;
+    case "30d":
+      days = 30;
+      break;
+    case "90d":
+      days = 90;
+      break;
+    case "1y":
+      days = 365;
+      break;
+    default:
+      days = 30;
   }
+
+  // Período atual
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  // Período anterior
+  const prevStartDate = new Date();
+  prevStartDate.setDate(prevStartDate.getDate() - days * 2);
+
+  const prevEndDate = new Date();
+  prevEndDate.setDate(prevEndDate.getDate() - days);
+
+  // Buscar pedidos atuais
+  const orders = await Order.find({ createdAt: { $gte: startDate } });
+
+  // Buscar pedidos do período anterior
+  const prevOrders = await Order.find({
+    createdAt: { $gte: prevStartDate, $lt: prevEndDate },
+  });
+
+  // Totais atuais
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const totalOrders = orders.length;
+  const customers = new Set(orders.map((o) => o.customerId)).size;
+
+  // Totais anteriores
+  const prevRevenue = prevOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const prevOrdersCount = prevOrders.length;
+  const prevCustomers = new Set(prevOrders.map((o) => o.customerId)).size;
+
+  // Popular Products
+  const productMap = {};
+  for (const order of orders) {
+    for (const item of order.items) {
+      if (!productMap[item.productId]) {
+        productMap[item.productId] = {
+          productId: item.productId,
+          productName: item.productName,
+          orderCount: 0,
+          revenue: 0,
+        };
+      }
+      productMap[item.productId].orderCount += item.quantity;
+      productMap[item.productId].revenue += item.total || item.price * item.quantity;
+    }
+  }
+  const popularProducts = Object.values(productMap)
+    .sort((a, b) => b.orderCount - a.orderCount)
+    .slice(0, 5);
+
+  // Order Status Distribution
+  const statusMap = {};
+  for (const order of orders) {
+    statusMap[order.status] = (statusMap[order.status] || 0) + 1;
+  }
+  const orderStatusDistribution = Object.entries(statusMap).map(([status, count]) => ({
+    status,
+    count,
+    percentage: ((count / totalOrders) * 100).toFixed(1),
+  }));
+
+  // Revenue Chart
+  const revenueChartMap = {};
+  for (const order of orders) {
+    const date = order.createdAt.toISOString().split("T")[0]; // yyyy-mm-dd
+    revenueChartMap[date] = (revenueChartMap[date] || 0) + (order.totalAmount || 0);
+  }
+  const revenueChart = Object.entries(revenueChartMap).map(([date, revenue]) => ({
+    date,
+    revenue,
+  }));
+
+  return {
+    revenue: {
+      total: totalRevenue,
+      growth: calculateGrowth(totalRevenue, prevRevenue),
+      thisMonth: totalRevenue,
+    },
+    orders: {
+      total: totalOrders,
+      growth: calculateGrowth(totalOrders, prevOrdersCount),
+      thisMonth: totalOrders,
+    },
+    customers: {
+      total: customers,
+      growth: calculateGrowth(customers, prevCustomers),
+      thisMonth: customers,
+    },
+    popularProducts,
+    orderStatusDistribution,
+    revenueChart,
+  };
 }
 
 module.exports = { getDashboard };
+
+
 
 
