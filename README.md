@@ -114,6 +114,29 @@ AppFood/
 
 ---
 
+## ⚡ Desafios e Soluções
+
+Durante o desenvolvimento do **AppFood**, uma das etapas mais complexas foi migrar o sistema de **dados mockados** (hard-coded) para **dados vindos diretamente do backend via API**.  
+
+Os principais desafios enfrentados foram:
+
+- **Estrutura dos dados:** Os dados mockados eram simplificados, enquanto o backend retornava objetos com IDs, arrays aninhados e campos opcionais, exigindo ajustes nos tipos e no TypeScript.  
+- **Tratamento de estados e carregamento:** Foi necessário implementar estados de carregamento (`loading`) e fallback para exibir placeholders ou mensagens quando a API ainda não retornava dados.  
+- **Erro e autenticação:** Integração com o backend exigiu lidar com erros HTTP, tokens JWT e refresh tokens, algo inexistente nos mocks.  
+- **Performance e renderização dinâmica:** Componentes como dashboards e gráficos precisaram ser refatorados para atualizar automaticamente quando os dados reais chegavam, evitando re-renderizações desnecessárias.  
+- **Mapeamento de métricas e gráficos:** Alguns dados vindos do backend precisaram ser transformados (por exemplo, contagem de pedidos por status, receita diária) antes de alimentar os componentes de visualização.
+
+**Soluções implementadas:**
+
+1. Criação de hooks customizados e serviços (`analyticsService`, `inventoryService`) para centralizar o consumo da API e tratamento de erros.  
+2. Uso de `useState` e `useEffect` no front-end para gerenciar carregamento, erros e atualização dinâmica dos dados.  
+3. Adaptação dos componentes existentes para aceitar dados do backend, mantendo fallback para exibição segura enquanto os dados chegam.  
+4. Implementação de tratamento de tokens JWT com interceptors do Axios, garantindo autenticação segura sem quebrar o fluxo da UI.
+
+> 🎯 Resultado: hoje o **AppFood** consegue consumir dados reais do backend de forma confiável, com atualização dinâmica no dashboard, analytics e gerenciamento de pedidos, mantendo a interface responsiva e interativa.
+
+-----
+
 ## 📢 Nota Final
 
 O **AppFood** nasceu como experimento para explorar boas práticas full-stack usando **Pythagora**, React, Node.js e MongoDB.  
