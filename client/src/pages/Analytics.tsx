@@ -56,13 +56,15 @@ export function Analytics() {
     )
   }
 
+  const formatCurrency = (value: number) => `$${value.toFixed(2)}`
+
   const statCards = [
     {
       title: "Total Revenue",
-      value: `$${analytics.revenue.total.toLocaleString()}`,
+      value: formatCurrency(analytics.revenue.total),
       change: analytics.revenue.growth,
       icon: DollarSign,
-      description: `$${analytics.revenue.thisMonth.toLocaleString()} this month`
+      description: `${formatCurrency(analytics.revenue.thisMonth)} this month`
     },
     {
       title: "Total Orders",
@@ -203,7 +205,9 @@ export function Analytics() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Revenue:</span>
-                    <span className="font-medium text-green-600">${product.revenue.toFixed(2)}</span>
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(product.revenue)}
+                    </span>
                   </div>
                 </div>
               </div>

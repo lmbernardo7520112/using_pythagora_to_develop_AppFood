@@ -1,6 +1,6 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
+import path from "path";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
@@ -11,22 +11,31 @@ export default defineConfig({
   },
   server: {
     host: true,
+    port: 5173, // Porta do frontend
+    strictPort: true,
+    open: true,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
+      // Proxy para todas as chamadas /api -> backend
+      "/api": {
+        target: "http://localhost:4444", // backend
         changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, "/api"),
       },
-      '/logs': {
-        target: 'http://localhost:4444',
+      // Proxy para logs ou endpoints específicos do backend
+      "/logs": {
+        target: "http://localhost:4444",
         changeOrigin: true,
-      }
+        secure: false,
+        rewrite: (path) => path.replace(/^\/logs/, "/logs"),
+      },
     },
     allowedHosts: [
-      'localhost',
-      '.pythagora.ai'
+      "localhost",
+      ".pythagora.ai",
     ],
     watch: {
-      ignored: ['**/node_modules/**', '**/dist/**', '**/public/**', '**/log/**']
-    }
+      ignored: ["**/node_modules/**", "**/dist/**", "**/public/**", "**/log/**"],
+    },
   },
-})
+});

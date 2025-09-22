@@ -1,62 +1,53 @@
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/useToast"
-import { getAnalytics, AnalyticsData } from "@/api/analytics"
-import { getOrders } from "@/api/orders"
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  ShoppingCart,
-  Users,
-  Package,
-  Clock,
-  CheckCircle
-} from "lucide-react"
-import { AnalyticsChart } from "@/components/AnalyticsChart"
-import { RecentOrders } from "@/components/RecentOrders"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/useToast";
+import { getAnalytics, getRecentOrders, AnalyticsData } from "@/api/analytics";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Clock, CheckCircle } from "lucide-react";
+import { AnalyticsChart } from "@/components/AnalyticsChart";
+import { RecentOrders } from "@/components/RecentOrders";
 
 export function AdminDashboard() {
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [recentOrders, setRecentOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const formatCurrency = (value: number) =>
+    `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    fetchDashboardData();
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true)
-      console.log('Fetching admin dashboard data...')
+      setLoading(true);
+      const [analyticsResponse, recentOrdersResponse] = await Promise.all([
+        getAnalytics("30d"),
+        getRecentOrders(5),
+      ]);
 
-      const [analyticsResponse, ordersResponse] = await Promise.all([
-        getAnalytics('30d'),
-        getOrders({ limit: 5 })
-      ])
-
-      setAnalytics(analyticsResponse.analytics)
-      setRecentOrders(ordersResponse.orders)
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      setAnalytics(analyticsResponse.analytics ?? null);
+      setRecentOrders(recentOrdersResponse ?? []);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
       toast({
         title: "Error",
         description: "Failed to load dashboard data. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
-    )
+    );
   }
 
   if (!analytics) {
@@ -65,43 +56,41 @@ export function AdminDashboard() {
         <h2 className="text-2xl font-bold text-gray-600 dark:text-gray-400 mb-4">
           Failed to load dashboard data
         </h2>
-        <p className="text-gray-500 dark:text-gray-500">
-          Please refresh the page to try again.
-        </p>
+        <p className="text-gray-500 dark:text-gray-500">Please refresh the page to try again.</p>
       </div>
-    )
+    );
   }
 
   const statCards = [
     {
       title: "Total Revenue",
-      value: `$${analytics.revenue.total.toLocaleString()}`,
+      value: formatCurrency(analytics.revenue.total),
       change: analytics.revenue.growth,
       icon: DollarSign,
-      description: "This month vs last month"
+      description: "This month vs last month",
     },
     {
       title: "Total Orders",
       value: analytics.orders.total.toLocaleString(),
       change: analytics.orders.growth,
       icon: ShoppingCart,
-      description: "This month vs last month"
+      description: "This month vs last month",
     },
     {
       title: "Total Customers",
       value: analytics.customers.total.toLocaleString(),
       change: analytics.customers.growth,
       icon: Users,
-      description: "This month vs last month"
+      description: "This month vs last month",
     },
     {
       title: "Active Products",
       value: analytics.popularProducts.length.toString(),
       change: 0,
       icon: Package,
-      description: "Currently available"
-    }
-  ]
+      description: "Currently available",
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -119,29 +108,18 @@ export function AdminDashboard() {
         {statCards.map((stat, index) => (
           <Card key={index} className="bg-white/80 backdrop-blur-sm border-gray-200/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {stat.title}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</CardTitle>
               <stat.icon className="h-4 w-4 text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                {stat.value}
-              </div>
-              {stat.change !== 0 && (
+              <div className="text-2xl font-bold text-gray-800 dark:text-gray-200">{stat.value}</div>
+              {stat.change !== 0 ? (
                 <div className="flex items-center space-x-1 text-xs">
-                  {stat.change > 0 ? (
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3 text-red-500" />
-                  )}
-                  <span className={stat.change > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(stat.change)}%
-                  </span>
+                  {stat.change > 0 ? <TrendingUp className="h-3 w-3 text-green-500" /> : <TrendingDown className="h-3 w-3 text-red-500" />}
+                  <span className={stat.change > 0 ? "text-green-500" : "text-red-500"}>{Math.abs(stat.change).toFixed(1)}%</span>
                   <span className="text-gray-500">{stat.description}</span>
                 </div>
-              )}
-              {stat.change === 0 && (
+              ) : (
                 <p className="text-xs text-gray-500">{stat.description}</p>
               )}
             </CardContent>
@@ -161,7 +139,7 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Order Status Distribution */}
+        {/* Order Status */}
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50">
           <CardHeader>
             <CardTitle>Order Status</CardTitle>
@@ -172,14 +150,12 @@ export function AdminDashboard() {
               {analytics.orderStatusDistribution.map((status) => (
                 <div key={status.status} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    {status.status === 'delivered' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                    {status.status === 'preparing' && <Clock className="h-4 w-4 text-yellow-500" />}
-                    {status.status === 'ready' && <Package className="h-4 w-4 text-blue-500" />}
-                    {status.status === 'pending' && <Clock className="h-4 w-4 text-gray-500" />}
-                    {status.status === 'cancelled' && <TrendingDown className="h-4 w-4 text-red-500" />}
-                    <span className="capitalize text-sm font-medium">
-                      {status.status}
-                    </span>
+                    {status.status === "delivered" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                    {status.status === "preparing" && <Clock className="h-4 w-4 text-yellow-500" />}
+                    {status.status === "ready" && <Package className="h-4 w-4 text-blue-500" />}
+                    {status.status === "pending" && <Clock className="h-4 w-4 text-gray-500" />}
+                    {status.status === "cancelled" && <TrendingDown className="h-4 w-4 text-red-500" />}
+                    <span className="capitalize text-sm font-medium">{status.status}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600">{status.count}</span>
@@ -215,7 +191,7 @@ export function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-sm">${product.revenue.toFixed(2)}</div>
+                    <div className="font-semibold text-sm">{formatCurrency(product.revenue)}</div>
                   </div>
                 </div>
               ))}
@@ -235,5 +211,6 @@ export function AdminDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
+

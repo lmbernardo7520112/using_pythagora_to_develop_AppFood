@@ -1,30 +1,24 @@
-// services/analyticsService.js
 const Order = require("../models/Order");
 
+/**
+ * Calcula crescimento percentual
+ */
 function calculateGrowth(current, previous) {
   if (!previous || previous === 0) return 0;
   return ((current - previous) / previous) * 100;
 }
 
+/**
+ * Obtém dados analíticos do dashboard
+ */
 async function getDashboard(period = "30d") {
-  const now = new Date();
   let days;
-
   switch (period) {
-    case "7d":
-      days = 7;
-      break;
-    case "30d":
-      days = 30;
-      break;
-    case "90d":
-      days = 90;
-      break;
-    case "1y":
-      days = 365;
-      break;
-    default:
-      days = 30;
+    case "7d": days = 7; break;
+    case "30d": days = 30; break;
+    case "90d": days = 90; break;
+    case "1y": days = 365; break;
+    default: days = 30;
   }
 
   // Período atual
@@ -34,29 +28,27 @@ async function getDashboard(period = "30d") {
   // Período anterior
   const prevStartDate = new Date();
   prevStartDate.setDate(prevStartDate.getDate() - days * 2);
-
   const prevEndDate = new Date();
   prevEndDate.setDate(prevEndDate.getDate() - days);
 
-  // Buscar pedidos atuais
+  // Pedidos atuais
   const orders = await Order.find({ createdAt: { $gte: startDate } });
 
-  // Buscar pedidos do período anterior
+  // Pedidos anteriores
   const prevOrders = await Order.find({
     createdAt: { $gte: prevStartDate, $lt: prevEndDate },
   });
 
-  // Totais atuais
+  // Totais
   const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const totalOrders = orders.length;
   const customers = new Set(orders.map((o) => o.customerId)).size;
 
-  // Totais anteriores
   const prevRevenue = prevOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const prevOrdersCount = prevOrders.length;
   const prevCustomers = new Set(prevOrders.map((o) => o.customerId)).size;
 
-  // Popular Products
+  // Produtos mais populares
   const productMap = {};
   for (const order of orders) {
     for (const item of order.items) {
@@ -76,7 +68,7 @@ async function getDashboard(period = "30d") {
     .sort((a, b) => b.orderCount - a.orderCount)
     .slice(0, 5);
 
-  // Order Status Distribution
+  // Distribuição por status
   const statusMap = {};
   for (const order of orders) {
     statusMap[order.status] = (statusMap[order.status] || 0) + 1;
@@ -84,13 +76,13 @@ async function getDashboard(period = "30d") {
   const orderStatusDistribution = Object.entries(statusMap).map(([status, count]) => ({
     status,
     count,
-    percentage: ((count / totalOrders) * 100).toFixed(1),
+    percentage: parseFloat(((count / totalOrders) * 100).toFixed(1)),
   }));
 
   // Revenue Chart
   const revenueChartMap = {};
   for (const order of orders) {
-    const date = order.createdAt.toISOString().split("T")[0]; // yyyy-mm-dd
+    const date = order.createdAt.toISOString().split("T")[0];
     revenueChartMap[date] = (revenueChartMap[date] || 0) + (order.totalAmount || 0);
   }
   const revenueChart = Object.entries(revenueChartMap).map(([date, revenue]) => ({
@@ -120,8 +112,12 @@ async function getDashboard(period = "30d") {
   };
 }
 
-module.exports = { getDashboard };
+/**
+ * ✅ Obtém os últimos pedidos
+ */
+async function getRecentOrders(limit = 5) {
+  const orders = await Order.find().sort({ createdAt: -1 }).limit(limit);
+  return orders;
+}
 
-
-
-
+module.exports = { getDashboard, getRecentOrders };
