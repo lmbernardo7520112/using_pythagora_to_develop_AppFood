@@ -1,3 +1,4 @@
+// client/src/pages/Home.tsx
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/useToast';
 import { getCategories, Category } from '@/api/categories';
 import { getProducts, Product } from '@/api/products';
-import { addToCart } from '@/api/cart';
+import { addToCart, AddToCartPayload } from '@/api/cart';
 import { Search, Clock, Utensils, Star } from 'lucide-react';
 import { ProductCard } from '@/components/ProductCard';
 import { CategoryFilter } from '@/components/CategoryFilter';
@@ -30,19 +31,15 @@ export function Home() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('Fetching home page data...');
 
       const [categoriesResponse, productsResponse] = await Promise.all([
         getCategories(),
         getProducts(),
       ]);
 
-      console.log('Categories received:', categoriesResponse.categories);
-      console.log('Products received:', productsResponse.products);
-
       setCategories(Array.isArray(categoriesResponse.categories) ? categoriesResponse.categories : []);
       setProducts(Array.isArray(productsResponse.products) ? productsResponse.products : []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
       toast({
         title: 'Error',
@@ -59,10 +56,10 @@ export function Home() {
 
     if (selectedCategory && selectedCategory !== 'all') {
       filtered = filtered.filter((product) => {
-        // Verifica se categoryId é um objeto ou uma string
-        const categoryId = typeof product.categoryId === 'object' && product.categoryId?._id 
-          ? product.categoryId._id 
-          : product.categoryId;
+        const categoryId =
+          typeof product.categoryId === 'object' && product.categoryId?._id
+            ? product.categoryId._id
+            : product.categoryId;
         return categoryId === selectedCategory;
       });
     }
@@ -75,23 +72,57 @@ export function Home() {
       );
     }
 
-    console.log('Filtered products:', filtered);
     setFilteredProducts(filtered);
   };
 
+  // Assinatura compatível com ProductCard: (productId, size, quantity)
   const handleAddToCart = async (productId: string, size: string, quantity: number) => {
     try {
-      console.log('Adding to cart:', { productId, size, quantity });
-      await addToCart({ productId, size, quantity });
+      // Busca produto no estado (deve existir)
+      const product = products.find((p) => p._id === productId);
+      if (!product) {
+        toast({ title: "Error", description: "Produto não encontrado.", variant: "destructive" });
+        return;
+      }
+
+      // Seleciona o tamanho correto (por name). fallback para primeiro size, se existir.
+      const sizeData =
+        (product.sizes && product.sizes.find((s) => s.name === size)) ||
+        (product.sizes && product.sizes.find((s) => s.isDefault)) ||
+        (product.sizes && product.sizes[0]) ||
+        null;
+
+      // Calcula preços
+      const unitPrice = sizeData ? sizeData.price : product.price ?? 0;
+      const sizeId = (sizeData && (sizeData as any)._id) ? (sizeData as any)._id : null;
+      const productImage =
+        Array.isArray(product.images) && product.images.length > 0
+          ? product.images[0]
+          : "https://via.placeholder.com/400?text=No+Image";
+
+      const payload: AddToCartPayload = {
+        productId: product._id,
+        productName: product.name,
+        productImage,
+        sizeId,
+        sizeName: sizeData ? sizeData.name : size,
+        unitPrice,
+        quantity,
+        totalPrice: unitPrice * quantity,
+      };
+
+      console.log("Adding to cart payload:", payload);
+
+      await addToCart(payload);
       toast({
-        title: 'Success',
-        description: 'Item added to cart successfully!',
+        title: "Success",
+        description: "Item added to cart successfully!",
       });
-    } catch (error) {
-      console.error('Error adding to cart:', error);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
       toast({
         title: 'Error',
-        description: 'Failed to add item to cart. Please try again.',
+        description: error?.message || 'Failed to add item to cart. Please try again.',
         variant: 'destructive',
       });
     }
@@ -107,6 +138,7 @@ export function Home() {
 
   return (
     <div className="space-y-8">
+      {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 text-white">
         <div className="relative z-10">
           <h1 className="text-4xl font-bold mb-4">Welcome to AppFood</h1>
@@ -131,6 +163,7 @@ export function Home() {
         <div className="absolute inset-0 bg-black/20"></div>
       </div>
 
+      {/* Search + Filter */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -148,6 +181,7 @@ export function Home() {
         />
       </div>
 
+      {/* Categories (when showing all) */}
       {selectedCategory === 'all' && !searchQuery && (
         <div>
           <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
@@ -168,7 +202,7 @@ export function Home() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       onError={(e) => {
                         console.error(`Failed to load category image: ${category.coverImage}`);
-                        e.currentTarget.src = 'https://via.placeholder.com/400?text=Fallback';
+                        (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Fallback';
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -184,6 +218,7 @@ export function Home() {
         </div>
       )}
 
+      {/* Products grid */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
@@ -213,6 +248,7 @@ export function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
+              // Passa a função no formato que ProductCard espera:
               <ProductCard
                 key={product._id}
                 product={product}
