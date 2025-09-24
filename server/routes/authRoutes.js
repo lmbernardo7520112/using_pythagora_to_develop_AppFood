@@ -1,6 +1,6 @@
 const express = require('express');
 const UserService = require('../services/userService.js');
-const { requireUser } = require('./middlewares/auth.js');
+const { authenticate, requireUser } = require('./middlewares/auth.js'); // ✅ corrigido
 const User = require('../models/User.js');
 const { generateAccessToken, generateRefreshToken } = require('../utils/auth.js');
 const jwt = require('jsonwebtoken');
@@ -8,6 +8,7 @@ const { ALL_ROLES } = require('../../shared/config/roles.js');
 
 const router = express.Router();
 
+// LOGIN
 router.post('/login', async (req, res) => {
   const sendError = msg => res.status(400).json({ message: msg });
   const { email, password } = req.body;
@@ -24,14 +25,19 @@ router.post('/login', async (req, res) => {
 
     user.refreshToken = refreshToken;
     await user.save();
-    return res.json({...user.toObject(), accessToken, refreshToken});
+
+    return res.json({
+      ...user.toObject(),
+      accessToken,
+      refreshToken
+    });
   } else {
     return sendError('Email or password is incorrect');
-
   }
 });
 
-router.post('/register', async (req, res, next) => {
+// REGISTER
+router.post('/register', async (req, res) => {
   if (req.user) {
     return res.json({ user: req.user });
   }
@@ -44,6 +50,7 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
+// LOGOUT
 router.post('/logout', async (req, res) => {
   const { email } = req.body;
 
@@ -56,6 +63,7 @@ router.post('/logout', async (req, res) => {
   res.status(200).json({ message: 'User logged out successfully.' });
 });
 
+// REFRESH TOKEN
 router.post('/refresh', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -67,10 +75,7 @@ router.post('/refresh', async (req, res) => {
   }
 
   try {
-    // Verify the refresh token
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-
-    // Find the user
     const user = await UserService.get(decoded.sub);
 
     if (!user) {
@@ -87,15 +92,12 @@ router.post('/refresh', async (req, res) => {
       });
     }
 
-    // Generate new tokens
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
 
-    // Update user's refresh token in database
     user.refreshToken = newRefreshToken;
     await user.save();
 
-    // Return new tokens
     return res.status(200).json({
       success: true,
       data: {
@@ -122,8 +124,10 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-router.get('/me', requireUser(ALL_ROLES), async (req, res) => {
+// CURRENT USER
+router.get('/me', authenticate, requireUser(ALL_ROLES), async (req, res) => {
   return res.status(200).json(req.user);
 });
 
 module.exports = router;
+

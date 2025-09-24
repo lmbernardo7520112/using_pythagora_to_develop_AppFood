@@ -1,8 +1,5 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
-const session = require("express-session");
-const MongoStore = require("connect-mongo");
 const cors = require("cors");
 const path = require("path");
 const { connectDB } = require("./config/database");
@@ -30,10 +27,10 @@ const port = process.env.PORT || 3000;
 app.enable("json spaces");
 app.enable("strict routing");
 
-// Configuração CORS
+// CORS configurado para frontend Vite
 app.use(
   cors({
-    origin: "http://localhost:5173", // frontend Vite
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
@@ -41,23 +38,6 @@ app.use(
 // Parse JSON e URL-encoded
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Session configuration
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "appfood-secret-key",
-    resave: false,
-    saveUninitialized: true,
-    store: MongoStore.create({
-      mongoUrl: process.env.DATABASE_URL,
-      collectionName: "sessions",
-    }),
-    cookie: {
-      secure: false, // true em produção com HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 1 dia
-    },
-  })
-);
 
 // Conexão com banco de dados
 connectDB();
@@ -68,7 +48,7 @@ app.on("error", (error) => {
   console.error(error.stack);
 });
 
-// Rotas API
+// ✅ ROTAS API
 app.use(basicRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -78,27 +58,34 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/inventory", inventoryRoutes);
 
-// Servir arquivos estáticos do frontend (build do Vite)
-app.use(express.static(path.join(__dirname, "dist")));
-
-// SPA fallback: qualquer rota não-API retorna index.html
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+// 404 handler para APIs
+app.use("/api/*", (req, res) => {
+  console.log(`❌ API endpoint not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: "API endpoint not found",
+    endpoint: req.originalUrl,
+  });
 });
 
-// 404 handler para APIs que não bateram nas rotas
-app.use((req, res) => {
-  res.status(404).json({ message: "Endpoint not found" });
+// Servir build do frontend
+app.use(express.static(path.join(__dirname, "dist")));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 // Error handler global
 app.use((err, req, res, next) => {
   console.error(`Unhandled application error: ${err.message}`);
   console.error(err.stack);
-  res.status(500).send("There was an error serving your request.");
+  res.status(500).json({
+    success: false,
+    message: "There was an error serving your request.",
+  });
 });
 
 // Inicia servidor
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+

@@ -1,3 +1,4 @@
+//server/models/Cart.js
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
@@ -80,14 +81,13 @@ cartSchema.index({ sessionId: 1 }, { sparse: true });
 
 // Pre-save middleware to calculate totals
 cartSchema.pre('save', function(next) {
-  this.totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
-  this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
-  
-  // Update item totals
   this.items.forEach(item => {
     item.totalPrice = item.quantity * item.unitPrice;
   });
-  
+
+  this.totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
+  this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
+
   next();
 });
 

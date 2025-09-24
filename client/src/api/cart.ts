@@ -1,163 +1,84 @@
-import api from './api';
+//client/src/api/cart.ts
+import api from "./api";
 
 export interface CartItem {
   _id: string;
   productId: string;
   productName: string;
   productImage: string;
-  size: string;
-  price: number;
+  sizeName: string;
+  unitPrice: number;
   quantity: number;
-  total: number;
+  totalPrice: number;
 }
 
 export interface Cart {
   _id: string;
-  userId: string;
+  userId?: string;
   items: CartItem[];
+  totalQuantity: number;
   totalAmount: number;
   createdAt: string;
   updatedAt: string;
 }
 
-// Description: Get cart items for current user
-// Endpoint: GET /api/cart
-// Request: {}
-// Response: { cart: Cart }
-export const getCartItems = async () => {
-  console.log('Fetching cart items...')
-  // Mocking the response
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        cart: {
-          _id: '1',
-          userId: 'user1',
-          items: [
-            {
-              _id: '1',
-              productId: '1',
-              productName: 'Margherita Pizza',
-              productImage: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=400',
-              size: 'Medium',
-              price: 16.99,
-              quantity: 2,
-              total: 33.98
-            },
-            {
-              _id: '2',
-              productId: '2',
-              productName: 'Caesar Salad',
-              productImage: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
-              size: 'Regular',
-              price: 8.99,
-              quantity: 1,
-              total: 8.99
-            }
-          ],
-          totalAmount: 42.97,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        }
-      });
-    }, 500);
-  });
-  // Uncomment the below lines to make an actual API call
-  // try {
-  //   return await api.get('/api/cart');
-  // } catch (error) {
-  //   throw new Error(error?.response?.data?.message || error.message);
-  // }
+// Envia token se disponível
+function authHeaders(token?: string) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// Description: Add item to cart
-// Endpoint: POST /api/cart/add
-// Request: { productId: string, size: string, quantity: number }
-// Response: { success: boolean, message: string }
-export const addToCart = async (data: { productId: string; size: string; quantity: number }) => {
-  console.log('Adding item to cart:', data)
-  // Mocking the response
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: 'Item added to cart successfully'
-      });
-    }, 500);
+// ✅ Get cart items
+export const getCartItems = async (token?: string): Promise<{ cart: Cart }> => {
+  const response = await api.get<{ success: boolean; cart: Cart }>("/cart", {
+    headers: authHeaders(token),
+    withCredentials: true,
   });
-  // Uncomment the below lines to make an actual API call
-  // try {
-  //   return await api.post('/api/cart/add', data);
-  // } catch (error) {
-  //   throw new Error(error?.response?.data?.message || error.message);
-  // }
-}
+  return { cart: response.data.cart };
+};
 
-// Description: Update cart item quantity
-// Endpoint: PUT /api/cart/update
-// Request: { itemId: string, quantity: number }
-// Response: { success: boolean, message: string }
-export const updateCartItem = async (data: { itemId: string; quantity: number }) => {
-  console.log('Updating cart item:', data)
-  // Mocking the response
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: 'Cart item updated successfully'
-      });
-    }, 500);
-  });
-  // Uncomment the below lines to make an actual API call
-  // try {
-  //   return await api.put('/api/cart/update', data);
-  // } catch (error) {
-  //   throw new Error(error?.response?.data?.message || error.message);
-  // }
-}
+// ✅ Add item to cart
+export const addToCart = async (
+  data: { productId: string; size?: string; quantity: number },
+  token?: string
+): Promise<{ success: boolean; message: string; cart: Cart }> => {
+  const response = await api.post<{ success: boolean; message: string; cart: Cart }>(
+    "/cart/items",
+    data,
+    { headers: authHeaders(token), withCredentials: true }
+  );
+  return response.data;
+};
 
-// Description: Remove item from cart
-// Endpoint: DELETE /api/cart/remove/:itemId
-// Request: {}
-// Response: { success: boolean, message: string }
-export const removeFromCart = async (itemId: string) => {
-  console.log('Removing item from cart:', itemId)
-  // Mocking the response
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: 'Item removed from cart successfully'
-      });
-    }, 500);
-  });
-  // Uncomment the below lines to make an actual API call
-  // try {
-  //   return await api.delete(`/api/cart/remove/${itemId}`);
-  // } catch (error) {
-  //   throw new Error(error?.response?.data?.message || error.message);
-  // }
-}
+// ✅ Update cart item
+export const updateCartItem = async (
+  data: { itemId: string; quantity: number },
+  token?: string
+): Promise<{ success: boolean; message: string; cart: Cart }> => {
+  const response = await api.put<{ success: boolean; message: string; cart: Cart }>(
+    `/cart/items/${data.itemId}`,
+    { quantity: data.quantity },
+    { headers: authHeaders(token), withCredentials: true }
+  );
+  return response.data;
+};
 
-// Description: Clear entire cart
-// Endpoint: DELETE /api/cart/clear
-// Request: {}
-// Response: { success: boolean, message: string }
-export const clearCart = async () => {
-  console.log('Clearing cart...')
-  // Mocking the response
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: 'Cart cleared successfully'
-      });
-    }, 500);
+// ✅ Remove cart item
+export const removeFromCart = async (
+  itemId: string,
+  token?: string
+): Promise<{ success: boolean; message: string; cart: Cart }> => {
+  const response = await api.delete<{ success: boolean; message: string; cart: Cart }>(
+    `/cart/items/${itemId}`,
+    { headers: authHeaders(token), withCredentials: true }
+  );
+  return response.data;
+};
+
+// ✅ Clear cart
+export const clearCart = async (token?: string): Promise<{ success: boolean; message: string; cart: Cart }> => {
+  const response = await api.delete<{ success: boolean; message: string; cart: Cart }>("/cart", {
+    headers: authHeaders(token),
+    withCredentials: true,
   });
-  // Uncomment the below lines to make an actual API call
-  // try {
-  //   return await api.delete('/api/cart/clear');
-  // } catch (error) {
-  //   throw new Error(error?.response?.data?.message || error.message);
-  // }
-}
+  return response.data;
+};
