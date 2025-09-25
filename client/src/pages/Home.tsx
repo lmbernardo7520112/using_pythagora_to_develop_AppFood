@@ -75,54 +75,121 @@ export function Home() {
     setFilteredProducts(filtered);
   };
 
-  // Assinatura compatível com ProductCard: (productId, size, quantity)
-  const handleAddToCart = async (productId: string, size: string, quantity: number) => {
+  // CORRECAO CRITICA: Nova assinatura compatível com ProductCard corrigido
+  const handleAddToCart = async (
+    productId: string, 
+    sizeName: string, 
+    sizeId: string | null, 
+    quantity: number
+  ) => {
     try {
-      // Busca produto no estado (deve existir)
+      console.log("handleAddToCart called with:", { productId, sizeName, sizeId, quantity });
+
+      // Busca produto no estado local (deve existir)
       const product = products.find((p) => p._id === productId);
       if (!product) {
-        toast({ title: "Error", description: "Produto não encontrado.", variant: "destructive" });
+        toast({ 
+          title: "Erro", 
+          description: "Produto não encontrado.", 
+          variant: "destructive" 
+        });
         return;
       }
 
-      // Seleciona o tamanho correto (por name). fallback para primeiro size, se existir.
-      const sizeData =
-        (product.sizes && product.sizes.find((s) => s.name === size)) ||
-        (product.sizes && product.sizes.find((s) => s.isDefault)) ||
-        (product.sizes && product.sizes[0]) ||
-        null;
+      // CORRECAO: Buscar dados completos do tamanho
+      let sizeData = null;
+      
+      if (product.sizes && product.sizes.length > 0) {
+        // Buscar por sizeId primeiro (mais preciso)
+        if (sizeId) {
+          sizeData = product.sizes.find((s) => (s as any)._id === sizeId);
+        }
+        
+        // Se não encontrou por ID, buscar por nome
+        if (!sizeData) {
+          sizeData = product.sizes.find((s) => s.name === sizeName);
+        }
+        
+        // Se ainda não encontrou, usar o padrão ou primeiro
+        if (!sizeData) {
+          sizeData = product.sizes.find((s) => s.isDefault) || product.sizes[0];
+        }
+      }
 
-      // Calcula preços
-      const unitPrice = sizeData ? sizeData.price : product.price ?? 0;
-      const sizeId = (sizeData && (sizeData as any)._id) ? (sizeData as any)._id : null;
-      const productImage =
+      // VALIDACOES ANTES DE ENVIAR
+      if (!sizeData) {
+        toast({ 
+          title: "Erro", 
+          description: "Tamanho não encontrado para este produto.", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Validar estoque se disponível
+      if (sizeData.stock !== undefined && sizeData.stock < quantity) {
+        toast({ 
+          title: "Erro", 
+          description: `Estoque insuficiente. Disponível: ${sizeData.stock}`, 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // CONSTRUCAO DO PAYLOAD COMPLETO
+      const productImage = (
         Array.isArray(product.images) && product.images.length > 0
           ? product.images[0]
-          : "https://via.placeholder.com/400?text=No+Image";
+          : "https://via.placeholder.com/400?text=No+Image"
+      );
 
       const payload: AddToCartPayload = {
         productId: product._id,
         productName: product.name,
         productImage,
-        sizeId,
-        sizeName: sizeData ? sizeData.name : size,
-        unitPrice,
+        sizeId: (sizeData as any)._id || null,  // ID específico do tamanho
+        sizeName: sizeData.name,                // Nome do tamanho
+        unitPrice: sizeData.price,              // Preço específico do tamanho
         quantity,
-        totalPrice: unitPrice * quantity,
+        totalPrice: sizeData.price * quantity,  // Preço total calculado
       };
 
-      console.log("Adding to cart payload:", payload);
+      console.log("Sending payload:", payload);
 
-      await addToCart(payload);
+      // CHAMADA DA API
+      const response = await addToCart(payload);
+      
+      console.log("Cart response:", response);
+
+      // FEEDBACK DE SUCESSO
       toast({
-        title: "Success",
-        description: "Item added to cart successfully!",
+        title: "Sucesso!",
+        description: `${product.name} (${sizeData.name}) adicionado ao carrinho!`,
       });
+
     } catch (error: any) {
       console.error("Error adding to cart:", error);
+      
+      // TRATAMENTO ESPECÍFICO DE ERROS
+      let errorMessage = "Falha ao adicionar item ao carrinho.";
+      
+      if (error.message) {
+        if (error.message.includes("Validation Error")) {
+          errorMessage = error.message.replace("Validation Error: ", "");
+        } else if (error.message.includes("Authentication required")) {
+          errorMessage = "Faça login para adicionar itens ao carrinho.";
+        } else if (error.message.includes("Product not found")) {
+          errorMessage = "Produto não encontrado ou indisponível.";
+        } else if (error.message.includes("Server error")) {
+          errorMessage = "Erro do servidor. Tente novamente.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to add item to cart. Please try again.',
+        title: 'Erro',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -248,7 +315,7 @@ export function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              // Passa a função no formato que ProductCard espera:
+              // CORRECAO: Usar a nova assinatura
               <ProductCard
                 key={product._id}
                 product={product}

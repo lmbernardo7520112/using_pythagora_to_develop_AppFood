@@ -120,6 +120,12 @@ export function Cart() {
     );
   }
 
+  // 🔑 Garantindo que totalAmount sempre seja número
+  const subtotal = Number(cart.totalAmount) || 0;
+  const deliveryFee = 3.99;
+  const taxes = subtotal * 0.08;
+  const finalTotal = subtotal + deliveryFee + taxes;
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 px-4">
       {/* Cabeçalho */}
@@ -153,7 +159,7 @@ export function Cart() {
                     {item.productName}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">Tamanho: {item.sizeName}</p>
-                  <p className="text-blue-600 font-semibold">${item.unitPrice.toFixed(2)}</p>
+                  <p className="text-blue-600 font-semibold">${Number(item.unitPrice).toFixed(2)}</p>
                 </div>
 
                 {/* Quantidade */}
@@ -182,7 +188,7 @@ export function Cart() {
                 {/* Total e remover */}
                 <div className="text-right">
                   <div className="font-bold text-lg text-gray-800 dark:text-gray-200">
-                    ${(item.unitPrice * item.quantity).toFixed(2)}
+                    ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
                   </div>
                   <Button
                     variant="ghost"
@@ -219,22 +225,20 @@ export function Cart() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span>${cart.totalAmount.toFixed(2)}</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Taxa de entrega</span>
-                  <span>$3.99</span>
+                  <span>${deliveryFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Impostos (8%)</span>
-                  <span>${(cart.totalAmount * 0.08).toFixed(2)}</span>
+                  <span>${taxes.toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>
-                    ${(cart.totalAmount + 3.99 + cart.totalAmount * 0.08).toFixed(2)}
-                  </span>
+                  <span>${finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -257,5 +261,3 @@ export function Cart() {
     </div>
   );
 }
-
-
