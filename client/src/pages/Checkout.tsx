@@ -1,3 +1,4 @@
+//client/src/pages/Checkout.tsx
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { useNavigate } from "react-router-dom"
 import { getCartItems, Cart } from "@/api/cart"
 import { createOrder } from "@/api/orders"
 import { useForm } from "react-hook-form"
-import { CreditCard, MapPin, Phone, User, ArrowLeft } from "lucide-react"
+import { CreditCard, MapPin, ArrowLeft } from "lucide-react"
 
 interface CheckoutFormData {
   street: string
@@ -36,7 +37,8 @@ export function Checkout() {
       setLoading(true)
       console.log('Fetching cart for checkout...')
       const response = await getCartItems()
-      if (!response.cart || response.cart.items.length === 0) {
+
+      if (!response.cart || !response.cart.items || response.cart.items.length === 0) {
         toast({
           title: "Empty Cart",
           description: "Your cart is empty. Add some items before checkout.",
@@ -45,7 +47,31 @@ export function Checkout() {
         navigate('/cart')
         return
       }
-      setCart(response.cart)
+
+      // normaliza items garantindo que totalPrice esteja definido
+      const normalizedCart: Cart = {
+        ...response.cart,
+        items: response.cart.items.map((item) => {
+          const unit = Number(item.price ?? item.unitPrice ?? 0)
+          const qty = Number(item.quantity ?? 0)
+          const total = Number(item.totalPrice ?? item.total ?? unit * qty)
+          return {
+            ...item,
+            unitPrice: unit,
+            quantity: qty,
+            totalPrice: total,
+          }
+        }),
+        totalAmount: Number(
+          response.cart.totalAmount ??
+          response.cart.items.reduce(
+            (sum, i) => sum + Number(i.totalPrice ?? i.total ?? (i.price ?? i.unitPrice ?? 0) * (i.quantity ?? 0)),
+            0
+          )
+        )
+      }
+
+      setCart(normalizedCart)
     } catch (error) {
       console.error('Error fetching cart:', error)
       toast({
@@ -73,9 +99,9 @@ export function Checkout() {
           productName: item.productName,
           productImage: item.productImage,
           size: item.size,
-          price: item.price,
+          price: item.unitPrice ?? item.price,
           quantity: item.quantity,
-          total: item.total
+          total: item.totalPrice // usar sempre o campo seguro
         }))
       }
 
@@ -111,7 +137,7 @@ export function Checkout() {
     return null
   }
 
-  const subtotal = cart.totalAmount
+  const subtotal = Number(cart.totalAmount ?? 0)
   const deliveryFee = 3.99
   const tax = subtotal * 0.08
   const total = subtotal + deliveryFee + tax
@@ -259,7 +285,9 @@ export function Checkout() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium text-sm">${item.total.toFixed(2)}</div>
+                      <div className="font-medium text-sm">
+                        ${Number(item.totalPrice ?? 0).toFixed(2)}
+                      </div>
                     </div>
                   </div>
                 ))}

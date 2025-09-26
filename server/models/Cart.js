@@ -1,4 +1,3 @@
-//server/models/Cart.js
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
@@ -64,11 +63,6 @@ const cartSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: function() {
-      // Anonymous carts expire in 24 hours, user carts in 7 days
-      const hours = this.userId ? 24 * 7 : 24;
-      return new Date(Date.now() + hours * 60 * 60 * 1000);
-    },
     index: { expireAfterSeconds: 0 }
   }
 }, {
@@ -79,8 +73,8 @@ const cartSchema = new mongoose.Schema({
 cartSchema.index({ userId: 1 }, { sparse: true });
 cartSchema.index({ sessionId: 1 }, { sparse: true });
 
-// Pre-save middleware to calculate totals
-cartSchema.pre('save', function(next) {
+// 🔑 Método central de cálculo (garante sempre consistência)
+cartSchema.methods.calculateTotals = function() {
   this.items.forEach(item => {
     item.totalPrice = item.quantity * item.unitPrice;
   });
@@ -88,22 +82,32 @@ cartSchema.pre('save', function(next) {
   this.totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
   this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
+  return this;
+};
+
+// Pre-save middleware para calcular totals e atualizar expiresAt
+cartSchema.pre('save', function(next) {
+  this.calculateTotals();
+
+  // Atualiza expiresAt sempre que salvar
+  const hours = this.userId ? 24 * 7 : 24;
+  this.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+
   next();
 });
 
-// Methods
+// Métodos de instância
 cartSchema.methods.addItem = function(itemData) {
   const existingItemIndex = this.items.findIndex(item => 
     item.productId.toString() === itemData.productId.toString() &&
-    ((!item.sizeId && !itemData.sizeId) || (item.sizeId && item.sizeId.toString() === itemData.sizeId.toString()))
+    ((!item.sizeId && !itemData.sizeId) || (item.sizeId && item.sizeId.toString() === itemData.sizeId?.toString()))
   );
 
   if (existingItemIndex > -1) {
-    // Update existing item
+    // Atualiza item existente
     this.items[existingItemIndex].quantity += itemData.quantity;
-    this.items[existingItemIndex].totalPrice = this.items[existingItemIndex].quantity * this.items[existingItemIndex].unitPrice;
   } else {
-    // Add new item
+    // Adiciona novo item
     this.items.push({
       ...itemData,
       totalPrice: itemData.quantity * itemData.unitPrice
@@ -127,22 +131,15 @@ cartSchema.methods.updateItemQuantity = function(itemId, quantity) {
       this.removeItem(itemId);
     } else {
       item.quantity = quantity;
-      item.totalPrice = item.quantity * item.unitPrice;
-      this.calculateTotals();
     }
   }
+  this.calculateTotals();
   return this;
 };
 
 cartSchema.methods.clearCart = function() {
   this.items = [];
   this.calculateTotals();
-  return this;
-};
-
-cartSchema.methods.calculateTotals = function() {
-  this.totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
-  this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
   return this;
 };
 
@@ -169,5 +166,4 @@ cartSchema.statics.findCart = function(sessionId, userId) {
 };
 
 const Cart = mongoose.model('Cart', cartSchema);
-
 module.exports = Cart;

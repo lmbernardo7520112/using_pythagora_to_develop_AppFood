@@ -1,3 +1,4 @@
+// client/src/pages/Orders.tsx
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -32,12 +33,6 @@ import {
   Eye,
 } from "lucide-react";
 
-// Interface para a resposta da API
-interface OrdersResponse {
-  success: boolean;
-  orders: Order[];
-}
-
 export function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,11 +50,7 @@ export function Orders() {
       setLoading(true);
       const params = statusFilter === "all" ? {} : { status: statusFilter };
       const response = await getOrders(params);
-      setOrders(
-        Array.isArray((response as OrdersResponse).orders)
-          ? (response as OrdersResponse).orders
-          : []
-      );
+      setOrders(Array.isArray(response.orders) ? response.orders : []);
     } catch (error) {
       toast({
         title: "Error",
@@ -216,9 +207,7 @@ export function Orders() {
                     <span>
                       {item.quantity}x {item.productName ?? item.productId}
                     </span>
-                    <span>
-                      ${(item.total ?? item.price * item.quantity).toFixed(2)}
-                    </span>
+                    <span>${item.totalPrice.toFixed(2)}</span>
                   </div>
                 ))}
                 {order.items.length > 2 && (
@@ -230,7 +219,7 @@ export function Orders() {
 
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="text-lg font-bold text-blue-600">
-                  ${(order.totalAmount ?? 0).toFixed(2)}
+                  ${order.totalAmount.toFixed(2)}
                 </div>
                 <div className="flex space-x-2">
                   <Button

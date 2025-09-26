@@ -1,4 +1,5 @@
 //client/src/pages/Cart.tsx
+// client/src/pages/Cart.tsx
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,13 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/useToast";
 import { useNavigate } from "react-router-dom";
 import { Plus, Minus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
-import { Cart as CartType, getCartItems, updateCartItem, removeFromCart, clearCart } from "@/api/cart";
+import {
+  Cart as CartType,
+  getCartItems,
+  updateCartItem,
+  removeFromCart,
+  clearCart,
+} from "@/api/cart";
 
 export function Cart() {
   const [cart, setCart] = useState<CartType | null>(null);
@@ -24,12 +31,51 @@ export function Cart() {
     try {
       setLoading(true);
       const cartData = await getCartItems();
-      setCart(cartData.cart);
+
+      if (!cartData.cart || !cartData.cart.items) {
+        setCart({ items: [], totalAmount: 0 });
+        return;
+      }
+
+      // 🔑 normaliza os itens do carrinho
+      const normalized: CartType = {
+        ...cartData.cart,
+        items: cartData.cart.items.map((item) => {
+          const unit = Number(item.unitPrice ?? item.price ?? 0);
+          const qty = Number(item.quantity ?? 0);
+          const total = Number(
+            item.totalPrice ?? item.total ?? unit * qty
+          );
+          return {
+            ...item,
+            unitPrice: unit,
+            quantity: qty,
+            totalPrice: total,
+          };
+        }),
+        totalAmount: Number(
+          cartData.cart.totalAmount ??
+            cartData.cart.items.reduce(
+              (sum, i) =>
+                sum +
+                Number(
+                  i.totalPrice ??
+                    i.total ??
+                    (i.unitPrice ?? i.price ?? 0) *
+                      (i.quantity ?? 0)
+                ),
+              0
+            )
+        ),
+      };
+
+      setCart(normalized);
     } catch (error: any) {
       console.error("Error fetching cart:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to load cart. Please try again.",
+        description:
+          error.message || "Failed to load cart. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -37,18 +83,32 @@ export function Cart() {
     }
   };
 
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (
+    itemId: string,
+    newQuantity: number
+  ) => {
     if (newQuantity < 1) return;
     try {
       setUpdating(itemId);
       const response = await updateCartItem({ itemId, quantity: newQuantity });
-      setCart(response.cart);
+
+      // normaliza de novo
+      const normalized: CartType = {
+        ...response.cart,
+        items: response.cart.items.map((item) => ({
+          ...item,
+          totalPrice: Number(item.totalPrice ?? item.total ?? item.unitPrice * item.quantity),
+        })),
+      };
+
+      setCart(normalized);
       toast({ title: "Success", description: "Cart updated successfully!" });
     } catch (error: any) {
       console.error("Error updating cart:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update cart. Please try again.",
+        description:
+          error.message || "Failed to update cart. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -65,7 +125,8 @@ export function Cart() {
       console.error("Error removing item:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to remove item. Please try again.",
+        description:
+          error.message || "Failed to remove item. Please try again.",
         variant: "destructive",
       });
     }
@@ -80,7 +141,8 @@ export function Cart() {
       console.error("Error clearing cart:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to clear cart. Please try again.",
+        description:
+          error.message || "Failed to clear cart. Please try again.",
         variant: "destructive",
       });
     }
@@ -120,7 +182,7 @@ export function Cart() {
     );
   }
 
-  // 🔑 Garantindo que totalAmount sempre seja número
+  // 🔑 usa totalPrice do backend como base
   const subtotal = Number(cart.totalAmount) || 0;
   const deliveryFee = 3.99;
   const taxes = subtotal * 0.08;
@@ -134,7 +196,8 @@ export function Cart() {
           Seu Carrinho
         </h1>
         <Badge variant="secondary" className="text-lg px-3 py-1">
-          {cart.items.length} {cart.items.length === 1 ? "item" : "itens"}
+          {cart.items.length}{" "}
+          {cart.items.length === 1 ? "item" : "itens"}
         </Badge>
       </div>
 
@@ -142,7 +205,10 @@ export function Cart() {
         {/* Itens do carrinho */}
         <div className="lg:col-span-2 space-y-4">
           {cart.items.map((item) => (
-            <Card key={item._id} className="bg-white/80 backdrop-blur-sm border-gray-200/50">
+            <Card
+              key={item._id}
+              className="bg-white/80 backdrop-blur-sm border-gray-200/50"
+            >
               <CardContent className="p-4 flex flex-col lg:flex-row items-center space-y-4 lg:space-y-0 lg:space-x-4">
                 {/* Imagem do produto */}
                 <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
@@ -158,8 +224,12 @@ export function Cart() {
                   <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 truncate">
                     {item.productName}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400">Tamanho: {item.sizeName}</p>
-                  <p className="text-blue-600 font-semibold">${Number(item.unitPrice).toFixed(2)}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Tamanho: {item.sizeName}
+                  </p>
+                  <p className="text-blue-600 font-semibold">
+                    ${Number(item.unitPrice ?? 0).toFixed(2)}
+                  </p>
                 </div>
 
                 {/* Quantidade */}
@@ -168,17 +238,23 @@ export function Cart() {
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
+                    onClick={() =>
+                      handleUpdateQuantity(item._id, item.quantity - 1)
+                    }
                     disabled={updating === item._id || item.quantity <= 1}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
-                  <span className="w-8 text-center font-medium">{item.quantity}</span>
+                  <span className="w-8 text-center font-medium">
+                    {item.quantity}
+                  </span>
                   <Button
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
+                    onClick={() =>
+                      handleUpdateQuantity(item._id, item.quantity + 1)
+                    }
                     disabled={updating === item._id}
                   >
                     <Plus className="h-3 w-3" />
@@ -188,7 +264,7 @@ export function Cart() {
                 {/* Total e remover */}
                 <div className="text-right">
                   <div className="font-bold text-lg text-gray-800 dark:text-gray-200">
-                    ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                    ${Number(item.totalPrice ?? 0).toFixed(2)}
                   </div>
                   <Button
                     variant="ghost"
@@ -251,7 +327,11 @@ export function Cart() {
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
 
-              <Button variant="outline" onClick={() => navigate("/")} className="w-full">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/")}
+                className="w-full"
+              >
                 Continuar Comprando
               </Button>
             </CardContent>
