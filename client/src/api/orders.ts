@@ -35,6 +35,23 @@ export interface Order {
   createdAt: string;
 }
 
+export interface CreateOrderPayload {
+  userId?: string; // ✅ Opcional para autenticados
+  sessionId?: string; // ✅ Opcional para anônimos
+  customerInfo: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  deliveryAddress: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  paymentMethod: string;
+}
+
 export interface OrdersResponse {
   success: boolean;
   orders: Order[];
@@ -100,7 +117,7 @@ export const getOrders = async (
 
 // Criar pedido (já normalizado)
 export const createOrder = async (
-  data: Omit<Order, "_id" | "orderNumber" | "status" | "createdAt">
+  data: CreateOrderPayload
 ): Promise<{ success: boolean; order: Order }> => {
   const res = await api.post<{ success: boolean; order: Order }>(
     "/orders",

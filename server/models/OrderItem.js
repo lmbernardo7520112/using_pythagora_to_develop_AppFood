@@ -1,3 +1,4 @@
+//server/models/OrderItem.js
 const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({

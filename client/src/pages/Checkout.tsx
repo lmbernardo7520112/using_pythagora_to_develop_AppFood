@@ -1,4 +1,5 @@
-//client/src/pages/Checkout.tsx
+// client/src/pages/Checkout.tsx
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,8 +12,11 @@ import { getCartItems, Cart } from "@/api/cart"
 import { createOrder } from "@/api/orders"
 import { useForm } from "react-hook-form"
 import { CreditCard, MapPin, ArrowLeft } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface CheckoutFormData {
+  name: string
+  email: string
   street: string
   city: string
   state: string
@@ -26,16 +30,27 @@ export function Checkout() {
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
+  const { currentUser, isAuthenticated } = useAuth()
+
   const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormData>()
 
   useEffect(() => {
+    if (!isAuthenticated || !currentUser) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to proceed with checkout.",
+        variant: "destructive",
+      })
+      navigate('/login')
+      return
+    }
     fetchCart()
-  }, [])
+  }, [isAuthenticated, currentUser])
 
   const fetchCart = async () => {
     try {
       setLoading(true)
-      console.log('Fetching cart for checkout...')
+      console.log('Fetching cart for checkout...', { userId: currentUser?._id })
       const response = await getCartItems()
 
       if (!response.cart || !response.cart.items || response.cart.items.length === 0) {
@@ -48,13 +63,13 @@ export function Checkout() {
         return
       }
 
-      // normaliza items garantindo que totalPrice esteja definido
+      // Normalização robusta: prioriza totalPrice, fallback para unit * qty
       const normalizedCart: Cart = {
         ...response.cart,
         items: response.cart.items.map((item) => {
-          const unit = Number(item.price ?? item.unitPrice ?? 0)
+          const unit = Number(item.unitPrice ?? 0)
           const qty = Number(item.quantity ?? 0)
-          const total = Number(item.totalPrice ?? item.total ?? unit * qty)
+          const total = Number(item.totalPrice ?? unit * qty)
           return {
             ...item,
             unitPrice: unit,
@@ -65,7 +80,7 @@ export function Checkout() {
         totalAmount: Number(
           response.cart.totalAmount ??
           response.cart.items.reduce(
-            (sum, i) => sum + Number(i.totalPrice ?? i.total ?? (i.price ?? i.unitPrice ?? 0) * (i.quantity ?? 0)),
+            (sum, i) => sum + (i.totalPrice ?? (Number(i.unitPrice ?? 0) * Number(i.quantity ?? 0))),
             0
           )
         )
@@ -86,23 +101,37 @@ export function Checkout() {
   }
 
   const onSubmit = async (data: CheckoutFormData) => {
-    if (!cart) return
+    if (!cart || !currentUser) return
 
     try {
       setSubmitting(true)
-      console.log('Submitting order:', data)
+      console.log('Submitting order:', {
+        userId: currentUser._id,
+        customerInfo: data,
+        deliveryAddress: {
+          street: data.street,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode
+        },
+        paymentMethod: 'cash'
+      })
 
+      // Payload: usa userId para autenticados
       const orderData = {
-        deliveryAddress: data,
-        items: cart.items.map(item => ({
-          productId: item.productId,
-          productName: item.productName,
-          productImage: item.productImage,
-          size: item.size,
-          price: item.unitPrice ?? item.price,
-          quantity: item.quantity,
-          total: item.totalPrice // usar sempre o campo seguro
-        }))
+        userId: currentUser._id,
+        customerInfo: {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+        },
+        deliveryAddress: {
+          street: data.street,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode,
+        },
+        paymentMethod: "cash",
       }
 
       const response = await createOrder(orderData)
@@ -113,11 +142,12 @@ export function Checkout() {
       })
 
       navigate('/orders')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error placing order:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to place order. Please try again.'
       toast({
         title: "Error",
-        description: "Failed to place order. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -133,8 +163,12 @@ export function Checkout() {
     )
   }
 
-  if (!cart) {
-    return null
+  if (!cart || !currentUser) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Loading cart or authentication required...</p>
+      </div>
+    )
   }
 
   const subtotal = Number(cart.totalAmount ?? 0)
@@ -168,11 +202,42 @@ export function Checkout() {
                 <span>Delivery Information</span>
               </CardTitle>
               <CardDescription>
-                Please provide your delivery address
+                Please provide your contact and delivery details
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    {...register('name', { required: 'Full name is required' })}
+                    placeholder="John Doe"
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Invalid email address'
+                      }
+                    })}
+                    placeholder="john@example.com"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="street">Street Address</Label>
                   <Input
@@ -237,7 +302,7 @@ export function Checkout() {
 
                 <Button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !isAuthenticated || !currentUser}
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                   size="lg"
                 >
@@ -281,12 +346,12 @@ export function Checkout() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{item.productName}</div>
                       <div className="text-xs text-gray-500">
-                        {item.size} • Qty: {item.quantity}
+                        {item.sizeName ?? item.sizeId} • Qty: {item.quantity}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-sm">
-                        ${Number(item.totalPrice ?? 0).toFixed(2)}
+                        ${item.totalPrice.toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -331,7 +396,7 @@ export function Checkout() {
                   Payment will be collected upon delivery
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Cash or card accepted
+                  Cash only
                 </p>
               </div>
             </CardContent>

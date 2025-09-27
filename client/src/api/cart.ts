@@ -60,7 +60,7 @@ function normalizeCart(cart: any): Cart {
   const totalAmount =
     Number(
       cart.totalAmount ??
-        items.reduce((sum, i) => sum + Number(i.totalPrice ?? 0), 0)
+        items.reduce((sum: number, i: { totalPrice: any; }) => sum + Number(i.totalPrice ?? 0), 0)
     ) || 0;
 
   return {
