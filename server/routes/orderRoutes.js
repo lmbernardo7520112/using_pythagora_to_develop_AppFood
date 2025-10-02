@@ -1,4 +1,4 @@
-//server/routes/orderRoutes.js
+// server/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
@@ -28,7 +28,6 @@ router.get('/recent', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching recent orders:', error.message);
-    console.error(error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch recent orders',
@@ -73,7 +72,6 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching orders:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',
@@ -91,18 +89,14 @@ router.get('/:id', async (req, res) => {
     const order = await Order.findById(id).populate('userId', 'name email');
 
     if (!order) {
-      console.log(`Order not found with ID: ${id}`);
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     const orderItems = await OrderItem.find({ orderId: id }).populate('productId', 'name images category');
 
-    console.log(`Found order: ${order.orderNumber} with ${orderItems.length} items`);
-
     res.status(200).json({ success: true, order: { ...order.toObject(), items: orderItems } });
   } catch (error) {
     console.error('Error fetching order:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, message: 'Failed to fetch order', error: error.message });
   }
 });
@@ -116,18 +110,14 @@ router.get('/number/:orderNumber', async (req, res) => {
     const order = await Order.findOne({ orderNumber }).populate('userId', 'name email');
 
     if (!order) {
-      console.log(`Order not found with number: ${orderNumber}`);
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     const orderItems = await OrderItem.find({ orderId: order._id }).populate('productId', 'name images category');
 
-    console.log(`Found order: ${order.orderNumber} with ${orderItems.length} items`);
-
     res.status(200).json({ success: true, order: { ...order.toObject(), items: orderItems } });
   } catch (error) {
     console.error('Error fetching order by number:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, message: 'Failed to fetch order', error: error.message });
   }
 });
@@ -135,12 +125,12 @@ router.get('/number/:orderNumber', async (req, res) => {
 // POST /api/orders - Create new order from cart
 router.post('/', async (req, res) => {
   try {
-    const { customerInfo, deliveryAddress, paymentMethod, sessionId, deliveryFee = 0, notes } = req.body;
+    const { customerInfo, deliveryAddress, paymentMethod, sessionId, deliveryFee = 0, notes, userId } = req.body;
 
-    console.log('Creating new order:', { customerName: customerInfo?.name, paymentMethod, sessionId });
+    console.log('Creating new order:', { customerName: customerInfo?.name, paymentMethod, sessionId, userId });
 
-    if (!customerInfo?.name || !customerInfo?.email) {
-      return res.status(400).json({ success: false, message: 'Customer name and email are required' });
+    if (!userId && (!customerInfo?.name || !customerInfo?.email)) {
+      return res.status(400).json({ success: false, message: 'Either userId or customer name/email is required' });
     }
 
     if (!deliveryAddress?.street || !deliveryAddress?.city || !deliveryAddress?.zipCode) {
@@ -191,7 +181,19 @@ router.post('/', async (req, res) => {
     const discount = 0;
     const totalAmount = subtotal + deliveryFee + tax - discount;
 
-    const order = new Order({ customerInfo, deliveryAddress, paymentMethod, subtotal, deliveryFee, tax, discount, totalAmount, notes, estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000) });
+    const order = new Order({
+      userId,
+      customerInfo,
+      deliveryAddress,
+      paymentMethod,
+      subtotal,
+      deliveryFee,
+      tax,
+      discount,
+      totalAmount,
+      notes,
+      estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000),
+    });
 
     const savedOrder = await order.save();
 
@@ -205,8 +207,9 @@ router.post('/', async (req, res) => {
     res.status(201).json({ success: true, message: 'Order created successfully', order: { ...savedOrder.toObject(), items: orderItems } });
   } catch (error) {
     console.error('Error creating order:', error.message);
-    console.error('Stack trace:', error.stack);
-    if (error.name === 'ValidationError') return res.status(400).json({ success: false, message: 'Validation error', error: error.message });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: 'Validation error', error: error.message });
+    }
     res.status(500).json({ success: false, message: 'Failed to create order', error: error.message });
   }
 });
@@ -231,11 +234,9 @@ router.put('/:id/status', async (req, res) => {
 
     await order.save();
 
-    console.log(`Order ${order.orderNumber} status updated from ${oldStatus} to ${status}`);
     res.status(200).json({ success: true, message: 'Order status updated successfully', order });
   } catch (error) {
     console.error('Error updating order status:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, message: 'Failed to update order status', error: error.message });
   }
 });
@@ -275,11 +276,9 @@ router.put('/:id/payment-status', async (req, res) => {
     }
 
     await order.save();
-    console.log(`Order ${order.orderNumber} payment status updated from ${oldPaymentStatus} to ${paymentStatus}`);
     res.status(200).json({ success: true, message: 'Payment status updated successfully', order });
   } catch (error) {
     console.error('Error updating payment status:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, message: 'Failed to update payment status', error: error.message });
   }
 });
@@ -313,11 +312,9 @@ router.delete('/:id', async (req, res) => {
     order.cancelReason = reason;
     await order.save();
 
-    console.log(`Order ${order.orderNumber} cancelled successfully`);
     res.status(200).json({ success: true, message: 'Order cancelled successfully', order });
   } catch (error) {
     console.error('Error cancelling order:', error.message);
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, message: 'Failed to cancel order', error: error.message });
   }
 });

@@ -1,5 +1,5 @@
 //client/src/pages/Cart.tsx
-// client/src/pages/Cart.tsx
+
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function Cart() {
       const cartData = await getCartItems();
 
       if (!cartData.cart || !cartData.cart.items) {
-        setCart({ items: [], totalAmount: 0 });
+        setCart({ _id: "", items: [], totalAmount: 0 });
         return;
       }
 
@@ -41,7 +41,7 @@ export function Cart() {
       const normalized: CartType = {
         ...cartData.cart,
         items: cartData.cart.items.map((item) => {
-          const unit = Number(item.unitPrice ?? item.price ?? 0);
+          const unit = Number(item.unitPrice ?? 0);
           const qty = Number(item.quantity ?? 0);
           const total = Number(
             item.totalPrice ?? item.total ?? unit * qty
@@ -61,7 +61,7 @@ export function Cart() {
                 Number(
                   i.totalPrice ??
                     i.total ??
-                    (i.unitPrice ?? i.price ?? 0) *
+                    (i.unitPrice ?? 0) *
                       (i.quantity ?? 0)
                 ),
               0

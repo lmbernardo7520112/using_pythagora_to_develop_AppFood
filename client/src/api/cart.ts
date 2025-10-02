@@ -1,5 +1,6 @@
 // client/src/api/cart.ts
 import api from "./api";
+import { v4 as uuidv4 } from "uuid";
 
 // ====================
 // Interfaces
@@ -14,8 +15,8 @@ export interface CartItem {
   sizeId?: string | null;
   unitPrice: number;
   quantity: number;
-  totalPrice: number; // ✅ sempre normalizado
-  total?: number;     // compatibilidade (não usado no front)
+  totalPrice?: number; // agora opcional
+  total?: number;      // compatibilidade
 }
 
 export interface Cart {
@@ -23,7 +24,7 @@ export interface Cart {
   userId?: string;
   items: CartItem[];
   totalQuantity?: number;
-  totalAmount: number;
+  totalAmount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -32,9 +33,20 @@ export interface Cart {
 // Helpers
 // ====================
 
-// Envia token se disponível
+// Envia token + sessionId se disponíveis
 function authHeaders(token?: string) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  let headers: Record<string, string> = {};
+
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let sessionId = localStorage.getItem("x-session-id");
+  if (!sessionId) {
+    sessionId = uuidv4();
+    localStorage.setItem("x-session-id", sessionId);
+  }
+  headers["x-session-id"] = sessionId;
+
+  return headers;
 }
 
 // ✅ Normaliza item recebido do backend
@@ -60,7 +72,11 @@ function normalizeCart(cart: any): Cart {
   const totalAmount =
     Number(
       cart.totalAmount ??
-        items.reduce((sum: number, i: { totalPrice: any; }) => sum + Number(i.totalPrice ?? 0), 0)
+        items.reduce(
+          (sum: number, i: { totalPrice?: number }) =>
+            sum + Number(i.totalPrice ?? 0),
+          0
+        )
     ) || 0;
 
   return {
@@ -74,19 +90,37 @@ function normalizeCart(cart: any): Cart {
 // API Methods
 // ====================
 
-// ✅ Obter itens do carrinho
+// ✅ Obter itens do carrinho (com retry automático em caso de erro 500)
 export const getCartItems = async (
   token?: string
 ): Promise<{ cart: Cart }> => {
-  const response = await api.get<{ success: boolean; cart: Cart }>(
-    "/cart",
-    {
-      headers: authHeaders(token),
-      withCredentials: true,
-    }
-  );
+  let attempts = 0;
+  const maxAttempts = 2;
 
-  return { cart: normalizeCart(response.data.cart) };
+  while (attempts <= maxAttempts) {
+    try {
+      const response = await api.get<{ success: boolean; cart: Cart }>(
+        "/cart",
+        {
+          headers: authHeaders(token),
+          withCredentials: true,
+        }
+      );
+      return { cart: normalizeCart(response.data.cart) };
+    } catch (error: any) {
+      attempts++;
+      if (error.response?.status >= 500 && attempts <= maxAttempts) {
+        console.warn(
+          `⚠️ getCartItems failed (attempt ${attempts}). Retrying...`
+        );
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  // fallback para carrinho vazio
+  return { cart: { _id: "local", items: [], totalAmount: 0 } as Cart };
 };
 
 // ✅ Payload para adicionar item
@@ -106,7 +140,6 @@ export const addToCart = async (
   data: AddToCartPayload,
   token?: string
 ): Promise<{ success: boolean; message: string; cart: Cart }> => {
-  // Validações básicas no front
   if (!data.productId) throw new Error("Product ID is required");
   if (!data.productName) throw new Error("Product name is required");
   if (!data.productImage) throw new Error("Product image is required");
@@ -117,13 +150,7 @@ export const addToCart = async (
     throw new Error("Valid quantity is required");
 
   const payload = {
-    productId: data.productId,
-    productName: data.productName,
-    productImage: data.productImage,
-    sizeId: data.sizeId,
-    sizeName: data.sizeName,
-    unitPrice: data.unitPrice,
-    quantity: data.quantity,
+    ...data,
     totalPrice: data.totalPrice ?? data.unitPrice * data.quantity,
   };
 

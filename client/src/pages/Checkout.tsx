@@ -351,7 +351,7 @@ export function Checkout() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-sm">
-                        ${item.totalPrice.toFixed(2)}
+                        ${(item.totalPrice ?? item.unitPrice * item.quantity).toFixed(2)}
                       </div>
                     </div>
                   </div>

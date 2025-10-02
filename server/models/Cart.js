@@ -1,3 +1,4 @@
+// server/models/Cart.js
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
@@ -40,15 +41,16 @@ const cartItemSchema = new mongoose.Schema({
 }, { _id: true });
 
 const cartSchema = new mongoose.Schema({
+  // Agora opcional
   sessionId: {
     type: String,
-    required: function() { return !this.userId; }, // Required if no userId
+    required: false,
     index: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false // Allow anonymous carts
+    required: false // Mantém suporte para carrinhos de usuário
   },
   items: [cartItemSchema],
   totalQuantity: {
@@ -69,11 +71,11 @@ const cartSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
+// Indexes para otimização
 cartSchema.index({ userId: 1 }, { sparse: true });
 cartSchema.index({ sessionId: 1 }, { sparse: true });
 
-// 🔑 Método central de cálculo (garante sempre consistência)
+// 🔑 Método central de cálculo
 cartSchema.methods.calculateTotals = function() {
   this.items.forEach(item => {
     item.totalPrice = item.quantity * item.unitPrice;
@@ -104,10 +106,8 @@ cartSchema.methods.addItem = function(itemData) {
   );
 
   if (existingItemIndex > -1) {
-    // Atualiza item existente
     this.items[existingItemIndex].quantity += itemData.quantity;
   } else {
-    // Adiciona novo item
     this.items.push({
       ...itemData,
       totalPrice: itemData.quantity * itemData.unitPrice
