@@ -37,7 +37,7 @@ export interface Order {
 
 export interface CreateOrderPayload {
   userId?: string; // ✅ Opcional para autenticados
-  sessionId?: string; // ✅ Opcional para anônimos
+  // sessionId?: string; // ✅ Opcional para anônimos
   customerInfo: {
     name: string;
     email: string;

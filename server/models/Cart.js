@@ -41,16 +41,16 @@ const cartItemSchema = new mongoose.Schema({
 }, { _id: true });
 
 const cartSchema = new mongoose.Schema({
-  // Agora opcional
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false, // mantém suporte para carrinhos anônimos
+    index: true
+  },
   sessionId: {
     type: String,
     required: false,
     index: true
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false // Mantém suporte para carrinhos de usuário
   },
   items: [cartItemSchema],
   totalQuantity: {
@@ -71,42 +71,36 @@ const cartSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes para otimização
+// ---------- INDEXES ----------
 cartSchema.index({ userId: 1 }, { sparse: true });
 cartSchema.index({ sessionId: 1 }, { sparse: true });
 
-// 🔑 Método central de cálculo
+// ---------- MÉTODOS DE INSTÂNCIA ----------
 cartSchema.methods.calculateTotals = function() {
   this.items.forEach(item => {
     item.totalPrice = item.quantity * item.unitPrice;
   });
-
   this.totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
   this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
-
   return this;
 };
 
-// Pre-save middleware para calcular totals e atualizar expiresAt
 cartSchema.pre('save', function(next) {
   this.calculateTotals();
-
-  // Atualiza expiresAt sempre que salvar
+  // expira em 7 dias para usuários logados, 1 dia para sessionId
   const hours = this.userId ? 24 * 7 : 24;
   this.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
-
   next();
 });
 
-// Métodos de instância
 cartSchema.methods.addItem = function(itemData) {
-  const existingItemIndex = this.items.findIndex(item => 
+  const existingIndex = this.items.findIndex(item =>
     item.productId.toString() === itemData.productId.toString() &&
     ((!item.sizeId && !itemData.sizeId) || (item.sizeId && item.sizeId.toString() === itemData.sizeId?.toString()))
   );
 
-  if (existingItemIndex > -1) {
-    this.items[existingItemIndex].quantity += itemData.quantity;
+  if (existingIndex > -1) {
+    this.items[existingIndex].quantity += itemData.quantity;
   } else {
     this.items.push({
       ...itemData,
@@ -151,7 +145,7 @@ cartSchema.methods.isEmpty = function() {
   return this.items.length === 0;
 };
 
-// Static methods
+// ---------- MÉTODOS ESTÁTICOS ----------
 cartSchema.statics.findBySession = function(sessionId) {
   return this.findOne({ sessionId });
 };
@@ -160,10 +154,14 @@ cartSchema.statics.findByUser = function(userId) {
   return this.findOne({ userId });
 };
 
-cartSchema.statics.findCart = function(sessionId, userId) {
+/**
+ * Find cart by userId or sessionId (prioriza userId)
+ */
+cartSchema.statics.findCart = function({ userId, sessionId }) {
   const query = userId ? { userId } : { sessionId };
   return this.findOne(query);
 };
 
 const Cart = mongoose.model('Cart', cartSchema);
 module.exports = Cart;
+
