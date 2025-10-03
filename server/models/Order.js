@@ -12,27 +12,6 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     required: false // Allow anonymous orders
   },
-  items: [{
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true
-    },
-    name: {
-      type: String,
-      required: true
-    },
-    price: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
-    }
-  }],
   customerInfo: {
     name: {
       type: String,
@@ -143,19 +122,19 @@ orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ 'customerInfo.email': 1 });
 
-// Pre-save middleware to generate order number and calculate totals if not provided
-orderSchema.pre('save', async function(next) {
-  if (this.isNew && !this.orderNumber) {
-    const count = await this.constructor.countDocuments();
-    this.orderNumber = `ORD-${Date.now()}-${(count + 1).toString().padStart(4, '0')}`;
+// Pre-validate middleware to generate order number and calculate totals if not provided
+orderSchema.pre('validate', async function(next) {
+  try {
+    if (this.isNew && !this.orderNumber) {
+      const count = await this.constructor.countDocuments();
+      this.orderNumber = `ORD-${Date.now()}-${(count + 1).toString().padStart(4, '0')}`;
+    }
+    // Calculate totalAmount as a safety net
+    this.totalAmount = this.subtotal + this.deliveryFee + this.tax - this.discount;
+    next();
+  } catch (err) {
+    next(err);
   }
-  // Calculate subtotal if not provided or if items exist
-  if (this.items && this.items.length > 0 && (!this.subtotal || this.subtotal === 0)) {
-    this.subtotal = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  }
-  // Calculate totalAmount
-  this.totalAmount = this.subtotal + this.deliveryFee + this.tax - this.discount;
-  next();
 });
 
 // Methods
