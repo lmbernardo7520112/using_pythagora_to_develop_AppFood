@@ -1,4 +1,7 @@
 const Order = require("../models/Order");
+const OrderItem = require("../models/OrderItem");
+const Product = require("../models/Product");
+const mongoose = require('mongoose');
 
 /**
  * Calcula crescimento percentual
@@ -42,31 +45,24 @@ async function getDashboard(period = "30d") {
   // Totais
   const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const totalOrders = orders.length;
-  const customers = new Set(orders.map((o) => o.customerId)).size;
+  const customers = new Set(orders.map((o) => o.userId ? o.userId.toString() : o.customerInfo.email)).size;
 
   const prevRevenue = prevOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   const prevOrdersCount = prevOrders.length;
-  const prevCustomers = new Set(prevOrders.map((o) => o.customerId)).size;
+  const prevCustomers = new Set(prevOrders.map((o) => o.userId ? o.userId.toString() : o.customerInfo.email)).size;
 
-  // Produtos mais populares
-  const productMap = {};
-  for (const order of orders) {
-    for (const item of order.items) {
-      if (!productMap[item.productId]) {
-        productMap[item.productId] = {
-          productId: item.productId,
-          productName: item.productName,
-          orderCount: 0,
-          revenue: 0,
-        };
-      }
-      productMap[item.productId].orderCount += item.quantity;
-      productMap[item.productId].revenue += item.total || item.price * item.quantity;
-    }
-  }
-  const popularProducts = Object.values(productMap)
-    .sort((a, b) => b.orderCount - a.orderCount)
-    .slice(0, 5);
+  // Produtos mais populares (usando OrderItem)
+  const popularProductsAgg = await OrderItem.aggregate([
+    { $match: { orderId: { $in: orders.map(o => o._id) } } },
+    { $group: { _id: "$productId", orderCount: { $sum: "$quantity" }, revenue: { $sum: "$totalPrice" } } },
+    { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+    { $unwind: '$product' },
+    { $project: { productId: '$_id', productName: '$product.name', orderCount: 1, revenue: 1 } },
+    { $sort: { orderCount: -1 } },
+    { $limit: 5 }
+  ]);
+
+  const popularProducts = popularProductsAgg;
 
   // Distribuição por status
   const statusMap = {};

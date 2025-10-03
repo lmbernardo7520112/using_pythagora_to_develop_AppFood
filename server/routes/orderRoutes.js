@@ -187,9 +187,9 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /api/orders/:id/status
+ * PATCH /api/orders/:id/status  // Mudado de PUT para PATCH
  */
-router.put('/:id/status', async (req, res) => {
+router.patch('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -283,4 +283,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
