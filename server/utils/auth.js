@@ -1,3 +1,4 @@
+//server/utils/auth.js
 const jwt = require('jsonwebtoken');
 
 const generateAccessToken = (user) => {

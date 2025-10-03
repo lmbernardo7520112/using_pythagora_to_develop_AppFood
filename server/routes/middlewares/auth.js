@@ -1,3 +1,4 @@
+// server/routes/middlewares/auth.js
 const jwt = require('jsonwebtoken');
 
 /**
@@ -28,7 +29,7 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = {
-      id: decoded.userId || decoded.id || decoded._id,
+      id: decoded.sub || decoded.userId || decoded.id || decoded._id,
       email: decoded.email,
       role: decoded.role
     };

@@ -1,4 +1,4 @@
-// scripts/updateStockQuantities.js
+// server/updateStockQuantities.js
 const mongoose = require('mongoose');
 require('dotenv').config();
 

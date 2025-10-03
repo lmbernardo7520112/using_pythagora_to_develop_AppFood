@@ -1,3 +1,4 @@
+//client/src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, ReactNode } from "react";
 import { login as apiLogin, register as apiRegister } from "../api/auth";
 import { User } from "../../../shared/types/user";
